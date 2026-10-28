@@ -14,7 +14,6 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 class NeighborNet(nn.Module):
@@ -69,14 +68,17 @@ class NeighborNet(nn.Module):
         teammate_feature[active_teammates] = self.teammate_encoder(flatten_teammate_states[active_teammates])
         opponent_feature[active_opponents] = self.opponent_encoder(flatten_opponent_states[active_opponents])
 
-        teammate_global_encoding = teammate_feature.view(-1, self.max_num_teammate, self.global_encoding_dim).max(
-            dim=1
-        )[0]
+        if self.max_num_teammate:
+            teammate_global_encoding = teammate_feature.view(
+                ego_states.shape[0], self.max_num_teammate, self.global_encoding_dim
+            ).max(dim=1)[0]
+        else:
+            teammate_global_encoding = ego_states.new_full((ego_states.shape[0], self.global_encoding_dim), -2.0)
 
         teammate_global_encoding[teammate_global_encoding.isinf()] = -2.0
 
-        opponent_global_encoding = opponent_feature.view(-1, self.max_num_opponent, self.global_encoding_dim).max(
-            dim=1
-        )[0]
+        opponent_global_encoding = opponent_feature.view(
+            ego_states.shape[0], self.max_num_opponent, self.global_encoding_dim
+        ).max(dim=1)[0]
 
         return torch.cat([teammate_global_encoding, opponent_global_encoding], dim=1)

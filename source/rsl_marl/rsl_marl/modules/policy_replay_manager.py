@@ -13,28 +13,32 @@
 # limitations under the License.
 
 import os
-import torch
 from copy import deepcopy
 
+import torch
+from mjlab_marl.config import WKS_LOGS_DIR
 from rsl_marl.modules import ActorCriticBeta
-
-from isaaclab_marl.config import WKS_LOGS_DIR
 
 
 class PolicyReplayManager:
     is_recurrent = False
-    policy_buffer = dict()
 
     def __init__(self, cfg, actor_critic, num_envs, num_replay_agents_per_env, device):
         self.cfg = cfg
         self.initial_policy = deepcopy(actor_critic)
         self.device = device
         self.actor_critic = actor_critic
+        self.policy_buffer = {}
 
         self.num_envs = num_envs
         self.num_replay_agents_per_env = num_replay_agents_per_env
 
         self.max_num_levels = min(self.cfg["max_num_policy_replay_level"], self.num_envs)
+        if self.num_envs == 0:
+            self.num_levels = 0
+            self.next_policy_level_index = 0
+            self.policy_level_index_dict = {}
+            return
         if self.cfg["dynamic_generate_replay_level"]:
             self.replay_from_previous_experiments = False
             self.num_levels = 0
@@ -49,7 +53,7 @@ class PolicyReplayManager:
             log_folder = os.path.join(WKS_LOGS_DIR, cfg["load_path"])
             self.load_buffer_policy(log_folder)
         else:
-            for _ in range(4):
+            for _ in range(self.max_num_levels):
                 self.append_policy(self.initial_policy)
 
         if self.num_levels > 0:
@@ -66,21 +70,26 @@ class PolicyReplayManager:
             self.policy_level_index_dict[key] = env_indices_split[i]
 
     def load_buffer_policy(self, log_folder):
-        models = [file for file in os.listdir(log_folder) if "model" in file]
+        models = [file for file in os.listdir(log_folder) if file.startswith("model_") and file.endswith(".pt")]
         models.sort(key=lambda m: f"{m:0>15}")
+        if not models:
+            raise FileNotFoundError(f"No model checkpoints found in {log_folder}")
 
         self.num_levels = min(self.max_num_levels, len(models))
         pathes = [os.path.join(log_folder, model) for model in models][-self.num_levels :]
 
         for i, path in enumerate(pathes):
-            loaded_dict = torch.load(path)
+            loaded_dict = torch.load(path, weights_only=True, map_location=self.device)
             self.policy_buffer[f"level_{i}"] = deepcopy(self.initial_policy)
             self.policy_buffer[f"level_{i}"].load_state_dict(loaded_dict["model_state_dict"])
         self.actor_critic.load_state_dict(loaded_dict["model_state_dict"])
         self.next_policy_level_index = len(pathes)
 
     def append_policy(self, policy: ActorCriticBeta):
-        self.policy_buffer[f"level_{self.next_policy_level_index}"] = deepcopy(policy)
+        # Copy weights into a clean module; live Beta distributions retain an autograd graph.
+        snapshot = deepcopy(self.initial_policy)
+        snapshot.load_state_dict(policy.state_dict())
+        self.policy_buffer[f"level_{self.next_policy_level_index}"] = snapshot
         if self.num_levels < self.max_num_levels:
             self.num_levels += 1
         else:

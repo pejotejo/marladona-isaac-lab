@@ -15,17 +15,16 @@
 import os
 import pathlib
 import statistics
-import torch
 from collections import deque
-from torch.utils.tensorboard import SummaryWriter as TensorboardSummaryWriter
 from typing import TYPE_CHECKING
 
 import git
-
-from isaaclab_marl.config import REPO_ROOT_DIR
+import torch
+from mjlab_marl.config import REPO_ROOT_DIR
+from torch.utils.tensorboard import SummaryWriter as TensorboardSummaryWriter
 
 if TYPE_CHECKING:
-    from isaaclab_marl.tasks.soccer.soccer_marl_env import SoccerMARLEnv
+    from mjlab_marl.tasks.soccer.soccer_marl_env import SoccerMARLEnv
 
 
 def store_code_state(logdir, repositories):
@@ -53,7 +52,7 @@ class LogManager:
         self.alg = alg
 
         self.log_dir = log_directory
-        self.save_args_dict = command_args.__dict__
+        self.save_args_dict = vars(command_args) if command_args is not None else {}
 
         self.device = device
 
@@ -69,6 +68,7 @@ class LogManager:
 
         self.git_status_repos = [REPO_ROOT_DIR]
         self.writer = None
+        self.logger_type = self.cfg.get("logger", "tensorboard").lower()
 
     def init_config(self, total_num_training_actors):
         self.tot_timesteps = 0
@@ -112,9 +112,11 @@ class LogManager:
             self.eval_info["episode_len"][update_index] = self.episode_length_buf[update_index]
         self.episode_length_buf[:] = self.env.episode_length_buf[torch.logical_not(self.env.env_data.is_training_env)]
         obs = self.get_world_state()
-        self.world_state_eval_buffer.extend([obs])
+        self.world_state_eval_buffer.append(obs.clone())
 
     def save_eval_trajectory(self, it, label=None):
+        if self.log_dir is None:
+            return
         eval_traj_folder = os.path.join(self.log_dir, "eval_traj")
         if not os.path.exists(eval_traj_folder):
             os.makedirs(eval_traj_folder)
@@ -137,15 +139,15 @@ class LogManager:
             self.logger_type = self.logger_type.lower()
 
             if self.logger_type == "neptune":
-                from rsl_rl.utils.neptune_utils import NeptuneSummaryWriter
+                from rsl_rl.utils.neptune_log_writer import NeptuneLogWriter
 
-                self.writer = NeptuneSummaryWriter(log_dir=self.log_dir, flush_secs=10, cfg=self.cfg)
-                self.writer.log_config(self.env.cfg, self.cfg, self.alg_cfg, self.policy_cfg)
+                self.writer = NeptuneLogWriter(log_dir=self.log_dir, project_name=self.cfg["neptune_project"])
+                self.writer.store_config(self.env.cfg, self.cfg)
             elif self.logger_type == "wandb":
-                from rsl_rl.utils.wandb_utils import WandbSummaryWriter
+                from rsl_rl.utils.wandb_log_writer import WandbLogWriter
 
-                self.writer = WandbSummaryWriter(log_dir=self.log_dir, flush_secs=10, cfg=self.cfg)
-                self.writer.log_config(self.env.cfg, self.cfg, self.alg_cfg, self.policy_cfg)
+                self.writer = WandbLogWriter(log_dir=self.log_dir, project_name=self.cfg["wandb_project"])
+                self.writer.store_config(self.env.cfg, self.cfg)
             elif self.logger_type == "tensorboard":
                 self.writer = TensorboardSummaryWriter(log_dir=self.log_dir, flush_secs=10)
             else:
@@ -155,6 +157,8 @@ class LogManager:
         store_code_state(self.log_dir, self.git_status_repos)
 
     def save_model(self, it, infos=None, path=None):
+        if self.log_dir is None and path is None:
+            return
         if path is None:
             path = os.path.join(self.log_dir, f"model_{it}.pt")
         saved_dict = {
@@ -220,8 +224,9 @@ class LogManager:
         if len(locs["scorebufferBlue"]) > 0:
             self.writer.add_scalar("Train/mean_score_blue_all", statistics.mean(locs["scorebufferBlue"]), locs["it"])
             self.writer.add_scalar("Train/mean_score_red_all", statistics.mean(locs["scorebufferRed"]), locs["it"])
-            self.writer.add_scalar("Eval/mean_score_blue_all", statistics.mean(locs["scorebufferBlueEval"]), locs["it"])
-            self.writer.add_scalar("Eval/mean_score_red_all", statistics.mean(locs["scorebufferRedEval"]), locs["it"])
+            if locs["scorebufferBlueEval"]:
+                self.writer.add_scalar("Eval/mean_score_blue_all", statistics.mean(locs["scorebufferBlueEval"]), locs["it"])
+                self.writer.add_scalar("Eval/mean_score_red_all", statistics.mean(locs["scorebufferRedEval"]), locs["it"])
 
         reward_buffer = locs["metric_buffer_dict"]["reward"]
         reward_buffer_eval = locs["metric_buffer_dict_eval"]["reward"]

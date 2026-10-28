@@ -371,7 +371,9 @@ class TrajAnalyser(QMainWindow):
         traj_files = [file for file in os.listdir(folder_path) if "eval_traj" in file]
         traj_dict = dict()
         for traj_file in traj_files:
-            traj_dict[traj_file.split(".")[0]] = torch.load(os.path.join(folder_path, traj_file), weights_only=True)
+            traj_dict[traj_file.split(".")[0]] = torch.load(
+                os.path.join(folder_path, traj_file), weights_only=True, map_location="cpu"
+            )
         self.traj_dict = traj_dict
         team_config = next(iter(self.traj_dict.values()))["infos"]["team_config"]
         min_team_size = torch.min(team_config, dim=0)[0]

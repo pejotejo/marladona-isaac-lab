@@ -1,0 +1,15 @@
+<mujoco model="MARLadona ball">
+  <asset>
+    <mesh name="white" file="ball_white.obj"/>
+    <mesh name="black" file="ball_black.obj"/>
+  </asset>
+  <worldbody>
+    <body name="ball" pos="0 0 0.3">
+      <freejoint/>
+      <inertial pos="0 0 0" mass="0.044" diaginertia="0.0001 0.0001 0.0001"/>
+      <geom name="collision" type="sphere" size="0.05" friction="0.25 0 0" condim="3" priority="1" rgba="1 1 1 0" group="3"/>
+      <geom name="white" type="mesh" mesh="white" rgba="0.95 0.95 0.95 1" contype="0" conaffinity="0" group="2"/>
+      <geom name="black" type="mesh" mesh="black" rgba="0.02 0.02 0.02 1" contype="0" conaffinity="0" group="2"/>
+    </body>
+  </worldbody>
+</mujoco>

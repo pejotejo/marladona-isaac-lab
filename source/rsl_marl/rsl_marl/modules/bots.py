@@ -14,14 +14,14 @@
 
 from __future__ import annotations
 
-import torch
-from torch.nn.functional import normalize
 from typing import TYPE_CHECKING
 
-from isaaclab_marl.utils.math_utils import rotate2d
+import torch
+from mjlab_marl.utils.math_utils import rotate2d
+from torch.nn.functional import normalize
 
 if TYPE_CHECKING:
-    from isaaclab_marl.tasks.soccer.soccer_marl_env import SoccerMARLEnv
+    from mjlab_marl.tasks.soccer.soccer_marl_env import SoccerMARLEnv
 
 
 class Bots:

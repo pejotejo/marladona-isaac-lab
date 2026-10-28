@@ -7,9 +7,8 @@
 
 import torch
 import torch.nn as nn
-from torch.distributions import Beta
-
 from rsl_marl.modules.neighbor_net import NeighborNet
+from torch.distributions import Beta
 
 
 class ActorCriticBeta(nn.Module):

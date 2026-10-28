@@ -6,18 +6,18 @@
 # Modifications copyright (c) 2025 Zichong Li, ETH Zurich
 
 import atexit
-import numpy as np
 import statistics
 
 # python
 import time
-
-# torch
-import torch
 from collections import deque
 from copy import deepcopy
 from typing import TYPE_CHECKING
 
+import numpy as np
+
+# torch
+import torch
 from rsl_marl.algorithms import PPO
 from rsl_marl.modules import ActorCriticBeta
 from rsl_marl.modules.bots import Bots
@@ -28,16 +28,16 @@ from rsl_marl.utils.log_manager import LogManager
 from rsl_rl.env import VecEnv
 
 if TYPE_CHECKING:
-    from isaaclab_marl.assets.env_data import EnvData
-    from isaaclab_marl.tasks.soccer.soccer_marl_env_cfg import SoccerMARLEnvCfg
+    from mjlab_marl.assets.env_data import EnvData
+    from mjlab_marl.tasks.soccer.soccer_marl_env_cfg import SoccerMARLEnvCfg
 
 
 class OnPolicyRunner:
     def __init__(self, env: VecEnv, train_cfg, log_dir=None, device="cpu", command_args=None):
         self.env_cfg: SoccerMARLEnvCfg = env.cfg
         self.cfg = train_cfg
-        self.alg_cfg = train_cfg["algorithm"]
-        self.policy_cfg = train_cfg["policy"]
+        self.alg_cfg = deepcopy(train_cfg["algorithm"])
+        self.policy_cfg = deepcopy(train_cfg["policy"])
         self.policy_replay_cfg = train_cfg["policy_replay"]
         self.device = device
         self.env = env
@@ -52,11 +52,11 @@ class OnPolicyRunner:
 
         self.max_num_teammate = min(
             self.env_cfg.soccer_game.num_agents_per_team - 1,
-            self.env_cfg.observations.neighbor.teammate_pose.params["max_num_neighbor"],
+            self.env_cfg.observations["neighbor"].terms["teammate_pose"].params["max_num_neighbor"],
         )
         self.max_num_opponent = min(
             self.env_cfg.soccer_game.num_agents_per_team,
-            self.env_cfg.observations.neighbor.teammate_pose.params["max_num_neighbor"],
+            self.env_cfg.observations["neighbor"].terms["teammate_pose"].params["max_num_neighbor"],
         )
         self.max_num_obs_agents = self.max_num_teammate + self.max_num_opponent
 
@@ -206,8 +206,9 @@ class OnPolicyRunner:
 
                     rewards_clone = rewards.clone()
 
-                    training_info = deepcopy(infos)
-                    training_info["time_outs"] = training_info["time_outs"][self.env_data.training_actor_index]
+                    training_info = {}
+                    if "time_outs" in infos:
+                        training_info["time_outs"] = infos["time_outs"][self.env_data.training_actor_index]
                     self.alg.process_env_step(
                         rewards_clone[self.env_data.training_actor_index],
                         actor_dones[self.env_data.training_actor_index],
@@ -285,6 +286,7 @@ class OnPolicyRunner:
                 action_log = actions
                 # Learning step
                 start = stop
+                critic_obs = torch.cat([obs_dict["critic"], obs_dict["neighbor_critic"]], dim=1)
                 self.alg.compute_returns(critic_obs[self.env_data.training_actor_index])
 
             policy_good_enough = (
@@ -353,7 +355,8 @@ class OnPolicyRunner:
                 self.logger.init_log_folder()
 
         self.logger.save_model(self.current_learning_iteration)
-        self.logger.save_eval_trajectory(it)
+        self.logger.save_eval_trajectory(self.current_learning_iteration)
+        atexit.unregister(self.exit_handler)
 
     def exit_handler(self):
         print("Interrupt detected, exiting...")
@@ -361,13 +364,13 @@ class OnPolicyRunner:
         self.logger.save_eval_trajectory(self.epoch_counter)
 
     def load(self, path, load_optimizer=True):
-        loaded_dict = torch.load(path, weights_only=True)
+        loaded_dict = torch.load(path, weights_only=True, map_location=self.device)
         self.alg.actor_critic.load_state_dict(loaded_dict["model_state_dict"])
 
         if load_optimizer:
             self.alg.optimizer.load_state_dict(loaded_dict["optimizer_state_dict"])
         self.current_learning_iteration = loaded_dict["iter"]
-        return loaded_dict["infos"]
+        return loaded_dict.get("infos")
 
     def get_inference_policy(self, device=None):
         self.eval_mode()  # switch to evaluation mode (dropout for example)

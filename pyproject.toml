@@ -1,6 +1,39 @@
 [build-system]
-requires = ["setuptools", "toml"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "marladona-mjlab"
+version = "1.0.0"
+description = "MARLadona multi-agent soccer and PPO training on mjlab / MuJoCo-Warp"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+dependencies = [
+    "mjlab>=1.6.0,<1.7",
+    "gymnasium>=1.0",
+    "GitPython>=3.1.30",
+]
+
+[project.optional-dependencies]
+analysis = ["pyqtgraph>=0.13", "PyQt5>=5.15", "matplotlib>=3.8"]
+dev = ["pytest>=8", "ruff>=0.9"]
+assets = ["usd-core>=25"]
+
+[tool.setuptools.packages.find]
+where = ["source/mjlab_marl", "source/rsl_marl"]
+include = ["mjlab_marl*", "rsl_marl*"]
+
+[tool.setuptools.package-data]
+mjlab_marl = ["assets/mjcf/*.xml", "assets/mjcf/*.obj"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "source/rsl_marl/tests"]
+markers = ["simulation: exercises the actual mjlab / MuJoCo-Warp simulator"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
 
 [tool.isort]
 
@@ -56,7 +89,7 @@ known_isaaclabparty = [
 ]
 
 # Modify the following to include the package names of your first-party code
-known_firstparty = "isaaclab_marl"
+known_firstparty = ["mjlab_marl", "rsl_marl"]
 known_local_folder = "config"
 
 [tool.pyright]

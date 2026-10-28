@@ -6,7 +6,6 @@
 # Modifications copyright (c) 2025 Zichong Li, ETH Zurich
 
 import torch
-
 from rsl_rl.utils import split_and_pad_trajectories
 
 

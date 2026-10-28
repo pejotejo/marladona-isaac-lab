@@ -3,6 +3,9 @@
 **/.thumbs
 
 # Python
+.venv/
+.ruff_cache/
+build/
 .DS_Store
 **/*.egg-info/
 **/__pycache__/

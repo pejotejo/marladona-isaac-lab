@@ -1,162 +1,100 @@
 # Copyright (c) 2024-2025, The Isaac Lab Project Developers.
 # All rights reserved.
-#
 # SPDX-License-Identifier: Apache-2.0
-#
 # Modifications copyright (c) 2025 Zichong Li, ETH Zurich
 
-"""Script to train RL agent with RSL-RL."""
-
-"""Launch Isaac Sim Simulator first."""
+"""Train MARLadona with mjlab and the original multi-agent PPO implementation."""
 
 import argparse
-import numpy as np
-import sys
-import torch
-
-from isaaclab.app import AppLauncher
-
-# local imports
-import cli_args  # isort: skip
-
-
-normal_repr = torch.Tensor.__repr__
-torch.Tensor.__repr__ = lambda self: f"{normal_repr(self)} \n {self.shape}, {self.min()}, {self.max()}"
-np.set_printoptions(edgeitems=3, linewidth=1000, threshold=100)
-torch.set_printoptions(edgeitems=3, linewidth=1000, threshold=100)
-
-# add argparse arguments
-parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
-parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
-parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
-parser.add_argument("--video_interval", type=int, default=2000, help="Interval between video recordings (in steps).")
-parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
-parser.add_argument("--task", type=str, default=None, help="Name of the task.")
-parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
-parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
-# append RSL-RL cli arguments
-cli_args.add_rsl_rl_args(parser)
-# append AppLauncher cli args
-AppLauncher.add_app_launcher_args(parser)
-args_cli, hydra_args = parser.parse_known_args()
-
-# always enable cameras to record video
-if args_cli.video:
-    args_cli.enable_cameras = True
-
-# clear out sys.argv for Hydra
-sys.argv = [sys.argv[0]] + hydra_args
-
-# launch omniverse app
-app_launcher = AppLauncher(args_cli)
-simulation_app = app_launcher.app
-
-"""Rest everything follows."""
-
-import gymnasium as gym
-import os
-import torch
 from datetime import datetime
+from pathlib import Path
 
-# from rsl_rl.runners import OnPolicyRunner
-from rsl_marl.runners import OnPolicyRunner
-from rsl_marl.utils.custom_vecenv_wrapper import CustomVecEnvWrapper
-
-from isaaclab.envs import (
-    DirectMARLEnv,
-    DirectMARLEnvCfg,
-    DirectRLEnvCfg,
-    ManagerBasedRLEnvCfg,
-    multi_agent_to_single_agent,
-)
-from isaaclab.utils.dict import print_dict
-from isaaclab.utils.io import dump_pickle, dump_yaml
-from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg
-from isaaclab_tasks.utils import get_checkpoint_path
-from isaaclab_tasks.utils.hydra import hydra_task_config
-
-# Import extensions to set up environment tasks
-import isaaclab_marl.tasks  # noqa: F401
-from isaaclab_marl.config import WKS_LOGS_DIR
-
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
-torch.backends.cudnn.deterministic = False
-torch.backends.cudnn.benchmark = False
+import cli_args
 
 
-@hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
-def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
-    """Train with RSL-RL agent."""
-    # override configurations with non-hydra CLI arguments
-    agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
-    env_cfg.scene.num_envs = args_cli.num_envs if args_cli.num_envs is not None else env_cfg.scene.num_envs
-    agent_cfg.max_iterations = (
-        args_cli.max_iterations if args_cli.max_iterations is not None else agent_cfg.max_iterations
-    )
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    cli_args.add_sim_args(parser)
+    parser.add_argument("--max_iterations", type=int, default=None)
+    args = parser.parse_args()
 
-    # set the environment seed
-    # note: certain randomizations occur in the environment initialization so we set the seed here
-    env_cfg.seed = agent_cfg.seed
-    env_cfg.sim.device = args_cli.device if args_cli.device is not None else env_cfg.sim.device
+    import torch
+    from mjlab_marl.config import WKS_LOGS_DIR
+    from mjlab_marl.tasks.soccer.soccer_marl_env import SoccerMARLEnv
+    from rsl_marl.runners import OnPolicyRunner
+    from rsl_marl.utils.custom_vecenv_wrapper import CustomVecEnvWrapper
 
-    # specify directory for logging experiments
-    log_root_path = os.path.join(WKS_LOGS_DIR, agent_cfg.experiment_name)
-    log_root_path = os.path.abspath(log_root_path)
-    print(f"[INFO] Logging experiment in directory: {log_root_path}")
-    # specify directory for logging runs: {time-stamp}_{run_name}
-    log_dir = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    agent_cfg = cli_args.parse_rsl_rl_cfg(args.task, args)
+    env_cfg = cli_args.make_env_cfg(args, agent_cfg.seed)
+    if args.max_iterations is not None:
+        agent_cfg.max_iterations = args.max_iterations
+    if agent_cfg.max_iterations < 1:
+        parser.error("--max_iterations must be positive")
+    if args.device.startswith("cuda") and not torch.cuda.is_available():
+        parser.error("CUDA is unavailable; use --device cpu for a small smoke test")
+
+    log_root = Path(WKS_LOGS_DIR) / agent_cfg.experiment_name
+    resume_path = None
+    if agent_cfg.resume or args.checkpoint is not None:
+        resume_path = cli_args.get_checkpoint_path(
+            log_root, agent_cfg.load_run, agent_cfg.load_checkpoint
+        )
+    run_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     if agent_cfg.run_name:
-        log_dir += f"_{agent_cfg.run_name}"
-    log_dir = os.path.join(log_root_path, log_dir)
+        run_name += f"_{agent_cfg.run_name}"
+    log_dir = log_root / run_name
+    log_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[INFO] Logging experiment in: {log_dir}")
 
-    # create isaac environment
-    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
-    # wrap for video recording
-    if args_cli.video:
-        video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos", "train"),
-            "step_trigger": lambda step: step % args_cli.video_interval == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
-        print("[INFO] Recording videos during training.")
-        print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+    env = SoccerMARLEnv(
+        env_cfg, device=args.device, render_mode="rgb_array" if args.video else None
+    )
+    viewer = None
+    video = None
+    runner = None
+    try:
+        if not args.headless:
+            viewer = cli_args.NativeViewer(env)
+        if args.video:
+            video = cli_args.VideoRecorder(
+                env,
+                log_dir / "videos" / "train",
+                args.video_length,
+                args.video_interval,
+            )
 
-    # convert to single-agent instance if required by the RL algorithm
-    if isinstance(env.unwrapped, DirectMARLEnv):
-        env = multi_agent_to_single_agent(env)
+        def on_step():
+            if viewer is not None:
+                viewer.sync()
+            if video is not None:
+                video.capture()
 
-    # wrap around environment for rsl-rl
-    env = CustomVecEnvWrapper(env)
-
-    # create runner from rsl-rl
-    runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=log_dir, device=agent_cfg.device, command_args=args_cli)
-
-    # save resume path before creating a new log_dir
-    if agent_cfg.resume:
-        # get path to previous checkpoint
-        resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
-        print(f"[INFO]: Loading model checkpoint from: {resume_path}")
-        # load previously trained model
-        runner.load(resume_path)
-
-    # dump the configuration into log-directory
-    dump_yaml(os.path.join(log_dir, "params", "env.yaml"), env_cfg)
-    dump_yaml(os.path.join(log_dir, "params", "agent.yaml"), agent_cfg)
-    dump_pickle(os.path.join(log_dir, "params", "env.pkl"), env_cfg)
-    dump_pickle(os.path.join(log_dir, "params", "agent.pkl"), agent_cfg)
-
-    # run training
-    runner.learn(num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True)
-
-    # close the simulator
-    env.close()
+        wrapped = CustomVecEnvWrapper(env, on_step=on_step)
+        runner = OnPolicyRunner(
+            wrapped,
+            agent_cfg.to_dict(),
+            log_dir=str(log_dir),
+            device=args.device,
+            command_args=args,
+        )
+        if resume_path is not None:
+            print(f"[INFO] Loading model checkpoint: {resume_path}")
+            runner.load(resume_path)
+        cli_args.save_config(log_dir, "env", env_cfg)
+        cli_args.save_config(log_dir, "agent", agent_cfg)
+        runner.learn(
+            num_learning_iterations=agent_cfg.max_iterations, init_at_random_ep_len=True
+        )
+    except KeyboardInterrupt:
+        if runner is not None:
+            runner.exit_handler()
+    finally:
+        if video is not None:
+            video.close()
+        if viewer is not None:
+            viewer.close()
+        env.close()
 
 
 if __name__ == "__main__":
-    # run the main function
     main()
-    # close sim app
-    simulation_app.close()

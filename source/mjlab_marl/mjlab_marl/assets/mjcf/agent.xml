@@ -1,0 +1,14 @@
+<mujoco model="MARLadona player">
+  <asset>
+    <mesh name="player" file="agent.obj"/>
+    <mesh name="heading" file="heading.obj"/>
+  </asset>
+  <worldbody>
+    <body name="base" pos="0 0 0.08">
+      <freejoint/>
+      <inertial pos="0 0 0.00000036495683" mass="5.480100154876709" diaginertia="0.01010004 0.01010004 0.0101"/>
+      <geom name="player" type="mesh" mesh="player" rgba="0 0 1 1" friction="0.5 0 0" condim="3"/>
+      <geom name="heading" type="mesh" mesh="heading" rgba="0.95 0.95 0.95 1" contype="0" conaffinity="0" group="2"/>
+    </body>
+  </worldbody>
+</mujoco>
