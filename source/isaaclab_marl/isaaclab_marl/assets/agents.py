@@ -56,14 +56,14 @@ class Agents(EnvCoreData):
         self.base_pose_w = torch.zeros(self.agent_pose_shape, device=self.device, dtype=torch.float32)
         self.base_default_pose_w = torch.zeros_like(self.base_pose_w)
 
-        self.constraint_state_indexes = torch.tensor([2, 4, 5, 9, 10, 11], device=self.device)
+        self.constraint_state_indexes = torch.tensor([2, 3, 4, 9, 10, 11], device=self.device)
         self.constraint_state_values = torch.tensor([0.08, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
 
         self.ball_pos_b = torch.zeros(self.agent_pos_shape, device=self.device, dtype=torch.float32)
         # Team base shaped tensors (N, 2 * N_T,)
-        self.base_lin_vel_b = self.asset.data.object_lin_vel_b[..., :2]
-        self.base_lin_vel_w = self.asset.data.object_lin_vel_w[..., :2]
-        self.base_ang_vel_w = self.asset.data.object_ang_vel_w[..., 2]
+        self.base_lin_vel_b = self.asset.data.body_com_lin_vel_b.torch[..., :2]
+        self.base_lin_vel_w = self.asset.data.body_com_lin_vel_w.torch[..., :2]
+        self.base_ang_vel_w = self.asset.data.body_com_ang_vel_w.torch[..., 2]
 
         # Agent2agent base shaped tensors (N, 2, N_T, N_T,)
         self.closest_teammate_indexes = torch.zeros(self.agent2agent_base_shape, device=self.device, dtype=torch.int32)
@@ -77,32 +77,31 @@ class Agents(EnvCoreData):
         self.base_default_pose_w[:, 1, ...] = red_default_pose
 
     def step(self):
-        agents_state = self.asset.data.object_state_w
+        agents_state = self.asset.data.body_state_w.torch
         agents_state[..., self.constraint_state_indexes] = self.constraint_state_values
-        self.asset.write_object_state_to_sim(agents_state)
+        self.asset.write_body_pose_to_sim_index(body_poses=agents_state[..., :7])
+        self.asset.write_body_com_velocity_to_sim_index(body_velocities=agents_state[..., 7:])
 
         self.base_pose_w[..., :2] = (
             agents_state[..., :2].view(self.agent_pos_shape)
             - self.expand_vector_to_env(self.env_data.env_origins)[..., :2]
         )
         self.base_pose_w[..., 2] = math_utils.euler_xyz_from_quat(
-            agents_state[..., 3:7].view(self.env_flatten_quat_shape)
+            agents_state[..., 3:7].view(self.env_flatten_quat_shape), wrap_to_2pi=True
         )[2].view(self.agent_base_shape)
 
-        self.base_lin_vel_b = self.asset.data.object_lin_vel_b[..., :2]
-        self.base_lin_vel_w = self.asset.data.object_lin_vel_w[..., :2]
-        self.base_ang_vel_w = self.asset.data.object_ang_vel_w[..., 2]
+        self.base_lin_vel_b = self.asset.data.body_com_lin_vel_b.torch[..., :2]
+        self.base_lin_vel_w = self.asset.data.body_com_lin_vel_w.torch[..., :2]
+        self.base_ang_vel_w = self.asset.data.body_com_ang_vel_w.torch[..., 2]
 
         self.compute_closest_agents()
 
     def reset(self, env_ids):
         if env_ids is None:
             env_ids = slice(None)
-            num_reset_env = self.num_envs
-        else:
-            num_reset_env = len(env_ids)
-        root_states = self.asset.data.default_object_state[env_ids].clone()
-        base_default_pose = self.base_default_pose_w.reshape(self.team_flatten_pose_shape)[env_ids]
+        root_states = self.asset.data.default_body_state.torch[env_ids].clone()
+        num_reset_env = root_states.shape[0]
+        base_default_pose = self.base_default_pose_w.reshape(self.team_flatten_pose_shape)[env_ids].clone()
         base_default_pose[..., 0] *= self.expand_to_env(self.env_data.field_length, flatten_type="team")[env_ids] / 2
         base_default_pose[..., 1] *= self.env_data.field_width / 2
         base_default_pose[..., 2] += torch.pi
@@ -120,7 +119,7 @@ class Agents(EnvCoreData):
             )
             base_default_pose[inactive] = inactive_base_default_pose[inactive]
 
-        positions = self.expand_vector_to_env(self.env_data.env_origins, flatten_type="team")[env_ids]
+        positions = self.expand_vector_to_env(self.env_data.env_origins, flatten_type="team")[env_ids].clone()
         positions[..., :2] += base_default_pose[..., :2]
         orientations = math_utils.quat_from_euler_xyz(
             torch.zeros_like(base_default_pose[..., 2]),
@@ -129,10 +128,10 @@ class Agents(EnvCoreData):
         )
 
         # set into the physics simulation
-        self.asset.write_object_pose_to_sim(torch.cat([positions, orientations], dim=-1), env_ids=env_ids)
+        self.asset.write_body_pose_to_sim_index(body_poses=torch.cat([positions, orientations], dim=-1), env_ids=env_ids)
         velocity = root_states[..., 7:]
         velocity[...] = 0
-        self.asset.write_object_velocity_to_sim(velocity, env_ids=env_ids)
+        self.asset.write_body_com_velocity_to_sim_index(body_velocities=velocity, env_ids=env_ids)
 
     def compute_ego_ball_state(self, ball_pos_w):
         self.ball_pos_b = transform2dPos(

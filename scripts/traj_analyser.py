@@ -25,6 +25,7 @@ from PyQt5.QtGui import QColor, QPen
 from PyQt5.QtWidgets import (
     QCheckBox,
     QComboBox,
+    QGraphicsEllipseItem,
     QHBoxLayout,
     QLabel,
     QMainWindow,
@@ -819,7 +820,7 @@ class TrajAnalyser(QMainWindow):
 
         radius = self.field_length * CIRCLE_SCALE
 
-        circle = pg.QtGui.QGraphicsEllipseItem(-radius, -radius, 2 * radius, 2 * radius)  # x, y, width, height
+        circle = QGraphicsEllipseItem(-radius, -radius, 2 * radius, 2 * radius)  # x, y, width, height
         circle.setPen(penW)
         self.plot_widget.addItem(circle)
 

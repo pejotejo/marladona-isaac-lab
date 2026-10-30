@@ -14,7 +14,7 @@ EXTENSION_TOML_DATA = toml.load(os.path.join(EXTENSION_PATH, "config", "extensio
 INSTALL_REQUIRES = [
     # NOTE: Add dependencies
     "psutil",
-    "pyqtgraph==0.11.0",
+    "pyqtgraph==0.13.7",
     "PyQt5==5.15.11",
 ]
 
@@ -31,11 +31,11 @@ setup(
     install_requires=INSTALL_REQUIRES,
     license="Apache 2.0",
     include_package_data=True,
-    python_requires=">=3.10",
+    python_requires=">=3.12,<3.13",
     classifiers=[
         "Natural Language :: English",
-        "Programming Language :: Python :: 3.10",
-        "Isaac Sim :: 4.5.0",
+        "Programming Language :: Python :: 3.12",
+        "Isaac Sim :: 6.2.0",
     ],
     zip_safe=False,
 )

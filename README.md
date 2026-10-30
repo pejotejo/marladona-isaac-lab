@@ -22,7 +22,17 @@ This repository contains the multi-agent soccer environment `isaaclab_marl` and 
 
 ## Installation
 
-- Install **Isaac Sim 4.5** and **Isaac Lab 2.0.2** by following the [installation guide](https://isaac-sim.github.io/IsaacLab/v2.0.2/source/setup/installation/index.html). We recommend using the conda installation as it simplifies calling Python scripts from the terminal.
+- Install **Isaac Lab 3.0.0**, **Isaac Sim 6.2.0.0**, and **Python 3.12** using the [3.0 installation guide](https://isaac-sim.github.io/IsaacLab/v3.0.0/source/isaaclab/installation.html). With `uv` installed, the source installation is:
+
+```bash
+git clone --branch v3.0.0 --single-branch https://github.com/isaac-sim/IsaacLab.git
+cd IsaacLab
+uv sync --extra isaacsim --extra video
+source .venv/bin/activate
+cd ..
+```
+
+This uses the tagged release's dependency versions, including PyTorch 2.11.0 with CUDA 13.0 and Warp 1.17.0. The soccer task explicitly selects Isaac Sim's **PhysX** backend. Keep this environment active for the commands below.
 
 - Clone this repository separately from the Isaac Lab installation (i.e., outside the `IsaacLab` directory):
 
@@ -42,14 +52,13 @@ cd marladona-isaac-lab
 - Using a python interpreter that has Isaac Lab installed, install the library
 
 ```bash
-python -m pip install -e source/isaaclab_marl
-python -m pip install -e source/rsl_marl
+uv pip install -e source/isaaclab_marl -e source/rsl_marl
 ```
 
 - Verify that the extension is correctly installed by running the following command:
 
 ```bash
-python scripts/rsl_rl/train.py --task=Isaac-Soccer-v0 
+python scripts/rsl_rl/train.py --task=Isaac-Soccer-v0 --headless
 ```
 
 We assumed `wks_logs` to be our default root log folder for all our scripts. An example policy is already provided there. You can test its performance by running the following command:
@@ -58,6 +67,17 @@ We assumed `wks_logs` to be our default root log folder for all our scripts. An 
 python scripts/rsl_rl/play.py --task=Isaac-Soccer-Play-v0 --experiment_name=00_example_policies --load_run=24_09_28_11_56_41_3v3 
 ```
 Note: The number of agents can be configured via the `SoccerMARLEnvPlayCfg` class.
+
+For a short GPU smoke test, add `--num_envs=16 --max_iterations=2` to the training command. Omit `--headless` to open the Isaac Sim viewer. `--video` uses Isaac Lab 3.0's internal video recorder. The custom MARL runner, observation layout, and PPO defaults are retained.
+
+CPU compatibility tests cover the migrated configurations, managers, and asset APIs. Full Isaac Sim/PhysX training, viewer/video recording, and supplied-checkpoint inference still require validation.
+
+To run the focused compatibility tests in the installed environment:
+
+```bash
+uv pip install pytest
+python -m pytest -q tests
+```
 
 ## Visualization Tools ## 
 

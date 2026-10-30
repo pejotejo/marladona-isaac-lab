@@ -34,10 +34,13 @@ parser.add_argument("--num_envs", type=int, default=None, help="Number of enviro
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--seed", type=int, default=None, help="Seed used for the environment")
 parser.add_argument("--max_iterations", type=int, default=None, help="RL Policy training iterations.")
+parser.add_argument("--headless", action="store_true", help="Run without a Kit window.")
+parser.add_argument("--enable_cameras", action="store_true", help="Enable offscreen camera rendering.")
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
+parser.set_defaults(visualizer=["kit"])
 args_cli, hydra_args = parser.parse_known_args()
 
 # always enable cameras to record video
@@ -55,6 +58,7 @@ simulation_app = app_launcher.app
 
 import gymnasium as gym
 import os
+import pickle
 import torch
 from datetime import datetime
 
@@ -67,17 +71,18 @@ from isaaclab.envs import (
     DirectMARLEnvCfg,
     DirectRLEnvCfg,
     ManagerBasedRLEnvCfg,
+    VideoRecorderCfg,
     multi_agent_to_single_agent,
 )
 from isaaclab.utils.dict import print_dict
-from isaaclab.utils.io import dump_pickle, dump_yaml
-from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg
-from isaaclab_tasks.utils import get_checkpoint_path
-from isaaclab_tasks.utils.hydra import hydra_task_config
+from isaaclab.utils.io import dump_yaml
+from isaaclab_tasks.utils import get_checkpoint_path, resolve_task_config
+from isaaclab_visualizers.kit import KitVisualizerCfg
 
 # Import extensions to set up environment tasks
 import isaaclab_marl.tasks  # noqa: F401
 from isaaclab_marl.config import WKS_LOGS_DIR
+from isaaclab_marl.tasks.soccer.agents.soccer_marl_ppo_runner_cfg import SoccerMARLPPORunnerCfg
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -85,8 +90,13 @@ torch.backends.cudnn.deterministic = False
 torch.backends.cudnn.benchmark = False
 
 
-@hydra_task_config(args_cli.task, "rsl_rl_cfg_entry_point")
-def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: RslRlOnPolicyRunnerCfg):
+def dump_pickle(filename, data):
+    """Preserve the existing config artifacts after Isaac Lab removed its pickle helper."""
+    with open(filename, "wb") as stream:
+        pickle.dump(data, stream)
+
+
+def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agent_cfg: SoccerMARLPPORunnerCfg):
     """Train with RSL-RL agent."""
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
@@ -110,19 +120,22 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
         log_dir += f"_{agent_cfg.run_name}"
     log_dir = os.path.join(log_root_path, log_dir)
 
-    # create isaac environment
-    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
-    # wrap for video recording
+    # configure Isaac Lab's internal video recorders before creating the environment
     if args_cli.video:
-        video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos", "train"),
-            "step_trigger": lambda step: step % args_cli.video_interval == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
+        env_cfg.sim.visualizer_cfgs.append(KitVisualizerCfg(headless=args_cli.headless))
+        env_cfg.video_recorders = [
+            VideoRecorderCfg(
+                source="visualizer:kit",
+                output_dir=os.path.join(log_dir, "videos", "train"),
+                video_interval=args_cli.video_interval,
+                video_length=args_cli.video_length,
+            )
+        ]
         print("[INFO] Recording videos during training.")
-        print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+        print_dict(env_cfg.video_recorders[0].to_dict(), nesting=4)
+
+    # create isaac environment
+    env = gym.make(args_cli.task, cfg=env_cfg)
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):
@@ -157,6 +170,7 @@ def main(env_cfg: ManagerBasedRLEnvCfg | DirectRLEnvCfg | DirectMARLEnvCfg, agen
 
 if __name__ == "__main__":
     # run the main function
-    main()
+    env_cfg, agent_cfg = resolve_task_config(args_cli.task, "rsl_rl_cfg_entry_point", overrides=hydra_args)
+    main(env_cfg, agent_cfg)
     # close sim app
     simulation_app.close()

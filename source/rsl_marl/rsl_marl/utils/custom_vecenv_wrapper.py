@@ -18,6 +18,11 @@ from isaaclab_rl.rsl_rl.vecenv_wrapper import RslRlVecEnvWrapper
 
 
 class CustomVecEnvWrapper(RslRlVecEnvWrapper):
+    def reset(self) -> tuple[torch.Tensor, dict]:
+        """Keep the original reset contract without batching match/player groups into a TensorDict."""
+        obs_dict, _ = self.env.reset()
+        return obs_dict["policy"], {"observations": obs_dict}
+
     def get_observations(self) -> tuple[torch.Tensor, dict]:
         """Returns the current observations of the environment."""
         return self.unwrapped.observation_manager.compute()

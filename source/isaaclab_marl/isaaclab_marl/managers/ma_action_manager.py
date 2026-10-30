@@ -19,8 +19,6 @@ from collections.abc import Sequence
 from prettytable import PrettyTable
 from typing import TYPE_CHECKING
 
-import omni.log
-
 from isaaclab.assets.articulation import Articulation
 from isaaclab.managers.action_manager import ActionTerm
 from isaaclab.managers.manager_base import ManagerBase
@@ -32,7 +30,7 @@ if TYPE_CHECKING:
     from isaaclab_marl.assets.agents import Agents
 
 from isaaclab.managers.action_manager import ActionTermCfg
-from isaaclab.utils.math import quat_rotate_inverse
+from isaaclab.utils.math import quat_apply_inverse
 
 from isaaclab_marl.utils.math_utils import rotate2d
 
@@ -117,7 +115,9 @@ class BaseMovementAction(ActionTerm, MultiAgentAction):
     def apply_actions(self):
         self.compute()
 
-        self._asset.set_external_force_and_torque(self._force, self._torque)
+        self._asset.permanent_wrench_composer.set_forces_and_torques_index(
+            forces=self._force, torques=self._torque
+        )
 
     def compute(self):
         actions = self._processed_actions
@@ -213,7 +213,9 @@ class BallControlAction(ActionTerm, MultiAgentAction):
 
     def apply_actions(self):
         self.compute()
-        self._asset.set_external_force_and_torque(self._force.unsqueeze(1), self._torque.unsqueeze(1))
+        self._asset.permanent_wrench_composer.set_forces_and_torques_index(
+            forces=self._force.unsqueeze(1), torques=self._torque.unsqueeze(1)
+        )
 
     def compute(self):
         def expand(env_base_tensor):
@@ -242,7 +244,7 @@ class BallControlAction(ActionTerm, MultiAgentAction):
                 torch.logical_and(ball_pos_b.norm(dim=-1) < self.ball_cfg.kick_margin, ball_pos_b[:, 0] > 0),
                 torch.abs(ball_pos_b[:, 1]) < 0.1,
             ),
-            expand(self._asset.data.root_pos_w[:, 2]) < 0.08,
+            expand(self._asset.data.root_pos_w.torch[:, 2]) < 0.08,
         ).unsqueeze(-1)
 
         target_velocity_cmd_w *= ball_controllable
@@ -263,10 +265,10 @@ class BallControlAction(ActionTerm, MultiAgentAction):
         self.total_target_cmd_w[:, :2] = torch.sum(target_force_cmd_w.view(self.env_data.team_flatten_pos_shape), dim=1)
 
         ball_state_modifyable = torch.any(ball_controllable.view(self.env_data.team_flatten_base_shape), dim=1)
-        self._force[:] = quat_rotate_inverse(self._asset.data.root_quat_w, self.total_target_cmd_w)
+        self._force[:] = quat_apply_inverse(self._asset.data.root_quat_w.torch, self.total_target_cmd_w)
 
         # passive physic: from environment friction
-        self._torque[:] = -self._asset.data.root_ang_vel_b * self.ball.rolling_friction
+        self._torque[:] = -self._asset.data.root_ang_vel_b.torch * self.ball.rolling_friction
 
 
 class MultiAgentActionManager(ManagerBase, MultiAgentAction):

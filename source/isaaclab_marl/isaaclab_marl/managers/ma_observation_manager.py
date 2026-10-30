@@ -27,7 +27,7 @@ class MultiAgentObservationManager(ObservationManager):
         """Number of environments."""
         return self._env.env_data.num_agents_per_team * 2
 
-    def compute_group(self, group_name: str) -> torch.Tensor | dict[str, torch.Tensor]:
+    def compute_group(self, group_name: str, update_history: bool = True) -> torch.Tensor | dict[str, torch.Tensor]:
         """Computes the observations for a given group.
 
         The observations for a given group are computed by calling the registered functions for each
@@ -88,7 +88,9 @@ class MultiAgentObservationManager(ObservationManager):
                 obs = obs.mul_(term_cfg.scale)
             # Update the history buffer if observation term has history enabled
             if term_cfg.history_length > 0:
-                self._group_obs_term_history_buffer[group_name][term_name].append(obs)
+                history = self._group_obs_term_history_buffer[group_name][term_name]
+                if update_history or history._buffer is None:
+                    history.append(obs)
                 if term_cfg.flatten_history_dim:
                     group_obs[term_name] = (
                         self._group_obs_term_history_buffer[group_name][term_name]
@@ -119,13 +121,16 @@ class MultiAgentObservationManager(ObservationManager):
         self._group_obs_term_cfgs: dict[str, list[ObservationTermCfg]] = dict()
         self._group_obs_class_term_cfgs: dict[str, list[ObservationTermCfg]] = dict()
         self._group_obs_concatenate: dict[str, bool] = dict()
+        self._group_obs_concatenate_dim: dict[str, int] = dict()
         self._group_obs_term_history_buffer: dict[str, dict] = dict()
+        self._group_obs_term_delay_buffer: dict[str, dict] = dict()
 
         self._group_symmetry_index: dict[str, dict] = dict()
         self._group_obs_slice_pos: dict[str, list[int]] = dict()
         # create a list to store modifiers that are classes
         # we store it as a separate list to only call reset on them and prevent unnecessary calls
         self._group_obs_class_modifiers: list[modifiers.ModifierBase] = list()
+        self._group_obs_class_instances = self._group_obs_class_modifiers
 
         # check if config is dict already
         if isinstance(self.cfg, dict):
@@ -155,6 +160,8 @@ class MultiAgentObservationManager(ObservationManager):
             group_entry_history_buffer: dict[str, CircularBuffer] = dict()
             # read common config for the group
             self._group_obs_concatenate[group_name] = group_cfg.concatenate_terms
+            self._group_obs_concatenate_dim[group_name] = -1
+            self._group_obs_term_delay_buffer[group_name] = {}
             # check if config is dict already
             if isinstance(group_cfg, dict):
                 group_cfg_items = group_cfg.items()
@@ -164,7 +171,7 @@ class MultiAgentObservationManager(ObservationManager):
             accumulated_obs_dim = 0
             for term_name, term_cfg in group_cfg_items:
                 # skip non-obs settings
-                if term_name in ["enable_corruption", "concatenate_terms", "history_length", "flatten_history_dim"]:
+                if term_name in ["enable_corruption", "concatenate_terms", "history_length", "flatten_history_dim", "history_order", "concatenate_dim"]:
                     continue
                 # check for non config
                 if term_cfg is None:

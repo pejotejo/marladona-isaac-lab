@@ -137,15 +137,15 @@ class LogManager:
             self.logger_type = self.logger_type.lower()
 
             if self.logger_type == "neptune":
-                from rsl_rl.utils.neptune_utils import NeptuneSummaryWriter
+                from rsl_rl.utils import NeptuneLogWriter
 
-                self.writer = NeptuneSummaryWriter(log_dir=self.log_dir, flush_secs=10, cfg=self.cfg)
-                self.writer.log_config(self.env.cfg, self.cfg, self.alg_cfg, self.policy_cfg)
+                self.writer = NeptuneLogWriter(log_dir=self.log_dir, project_name=self.cfg["neptune_project"])
+                self.writer.store_config(self.env.cfg, self.cfg)
             elif self.logger_type == "wandb":
-                from rsl_rl.utils.wandb_utils import WandbSummaryWriter
+                from rsl_rl.utils import WandbLogWriter
 
-                self.writer = WandbSummaryWriter(log_dir=self.log_dir, flush_secs=10, cfg=self.cfg)
-                self.writer.log_config(self.env.cfg, self.cfg, self.alg_cfg, self.policy_cfg)
+                self.writer = WandbLogWriter(log_dir=self.log_dir, project_name=self.cfg["wandb_project"])
+                self.writer.store_config(self.env.cfg, self.cfg)
             elif self.logger_type == "tensorboard":
                 self.writer = TensorboardSummaryWriter(log_dir=self.log_dir, flush_secs=10)
             else:

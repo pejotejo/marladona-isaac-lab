@@ -19,6 +19,7 @@ from dataclasses import MISSING
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
+from isaaclab.managers import ActionTermCfg
 from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
@@ -33,7 +34,8 @@ from isaaclab.terrains import TerrainImporterCfg
 # Scene definition
 ##
 from isaaclab.utils import configclass
-from isaaclab.utils.noise import AdditiveUniformNoiseCfg as Unoise
+from isaaclab.utils.noise import UniformNoiseCfg as Unoise
+from isaaclab_physx.physics import PhysxCfg
 
 import isaaclab_marl.tasks.soccer.mdp as mdp
 import isaaclab_marl.tasks.soccer.mdp.observations as O
@@ -127,7 +129,7 @@ class MySceneCfg(InteractiveSceneCfg):
                     AssetBaseCfg(
                         prim_path=f"/Visuals/SoccerFieldVisuals/goal_red_{i}_{j}",
                         init_state=AssetBaseCfg.InitialStateCfg(
-                            pos=(goal_red_x, sub_terrain_origin_y, 0.0), rot=(0.0, 0.0, 0.0, 1.0)
+                            pos=(goal_red_x, sub_terrain_origin_y, 0.0), rot=(0.0, 0.0, 1.0, 0.0)
                         ),
                         spawn=sim_utils.UsdFileCfg(
                             usd_path=MARL_ROOT_DIR + "/assets/goal/goal.usd",
@@ -161,8 +163,8 @@ class MySceneCfg(InteractiveSceneCfg):
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    base_movement = mdp.ActionTermCfg(class_type=BaseMovementAction, asset_name="agents")
-    ball_control = mdp.ActionTermCfg(class_type=BallControlAction, asset_name="ball")
+    base_movement = ActionTermCfg(class_type=BaseMovementAction, asset_name="agents")
+    ball_control = ActionTermCfg(class_type=BallControlAction, asset_name="ball")
 
 
 @configclass
@@ -324,9 +326,8 @@ class SoccerMARLEnvCfg(ManagerBasedRLEnvCfg):
         # simulation settings
         self.sim.dt = 0.02
         self.sim.render_interval = self.decimation
-        self.sim.disable_contact_processing = True
         self.sim.physics_material = self.scene.terrain.physics_material
-        self.sim.physx.gpu_max_rigid_patch_count = 10 * 2**15
+        self.sim.physics = PhysxCfg(gpu_max_rigid_patch_count=10 * 2**15)
 
         # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
         # this generates terrains with increasing difficulty and is useful for training

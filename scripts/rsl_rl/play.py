@@ -41,12 +41,15 @@ parser.add_argument(
 )
 parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
+parser.add_argument("--headless", action="store_true", help="Run without a Kit window.")
+parser.add_argument("--enable_cameras", action="store_true", help="Enable offscreen camera rendering.")
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
 
 # append AppLauncher cli args
 AppLauncher.add_app_launcher_args(parser)
+parser.set_defaults(visualizer=["kit"])
 args_cli = parser.parse_args()
 # always enable cameras to record video
 if args_cli.video:
@@ -66,9 +69,10 @@ from typing import TYPE_CHECKING
 from rsl_marl.runners import OnPolicyRunner
 from rsl_marl.utils.custom_vecenv_wrapper import CustomVecEnvWrapper
 
-from isaaclab.envs import DirectMARLEnv, multi_agent_to_single_agent
+from isaaclab.envs import DirectMARLEnv, VideoRecorderCfg, multi_agent_to_single_agent
 from isaaclab.utils.dict import print_dict
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
+from isaaclab_visualizers.kit import KitVisualizerCfg
 
 # Import extensions to set up environment tasks
 import isaaclab_marl.tasks  # noqa: F401
@@ -134,19 +138,21 @@ def main():
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
     log_dir = os.path.dirname(resume_path)
 
-    # create isaac environment
-    env = gym.make(args_cli.task, cfg=env_cfg, render_mode="rgb_array" if args_cli.video else None)
-    # wrap for video recording
+    # configure Isaac Lab's internal video recorders before creating the environment
     if args_cli.video:
-        video_kwargs = {
-            "video_folder": os.path.join(log_dir, "videos", "play"),
-            "step_trigger": lambda step: step == 0,
-            "video_length": args_cli.video_length,
-            "disable_logger": True,
-        }
+        env_cfg.sim.visualizer_cfgs.append(KitVisualizerCfg(headless=args_cli.headless))
+        env_cfg.video_recorders = [
+            VideoRecorderCfg(
+                source="visualizer:kit",
+                output_dir=os.path.join(log_dir, "videos", "play"),
+                video_length=args_cli.video_length,
+            )
+        ]
         print("[INFO] Recording videos during training.")
-        print_dict(video_kwargs, nesting=4)
-        env = gym.wrappers.RecordVideo(env, **video_kwargs)
+        print_dict(env_cfg.video_recorders[0].to_dict(), nesting=4)
+
+    # create isaac environment
+    env = gym.make(args_cli.task, cfg=env_cfg)
 
     # convert to single-agent instance if required by the RL algorithm
     if isinstance(env.unwrapped, DirectMARLEnv):

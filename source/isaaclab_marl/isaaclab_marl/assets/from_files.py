@@ -7,16 +7,13 @@
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
-import isaacsim.core.utils.prims as prim_utils
-import isaacsim.core.utils.stage as stage_utils
-import omni.kit.commands
-import omni.log
 from pxr import Usd
 
 from isaaclab.sim import schemas
-from isaaclab.sim.utils import bind_visual_material, clone, select_usd_variants
+from isaaclab.sim.utils import bind_visual_material, clone, create_prim, get_current_stage, select_usd_variants
 
 if TYPE_CHECKING:
     from . import from_files_cfg
@@ -28,6 +25,7 @@ def spawn_from_usd(
     cfg: from_files_cfg.UsdFileCfg,
     translation: tuple[float, float, float] | None = None,
     orientation: tuple[float, float, float, float] | None = None,
+    **kwargs,
 ) -> Usd.Prim:
     """Spawn an asset from a USD file and override the settings with the given config.
 
@@ -49,7 +47,7 @@ def spawn_from_usd(
         cfg: The configuration instance.
         translation: The translation to apply to the prim w.r.t. its parent prim. Defaults to None, in which
             case the translation specified in the USD file is used.
-        orientation: The orientation in (w, x, y, z) to apply to the prim w.r.t. its parent prim. Defaults to None,
+        orientation: The orientation in (x, y, z, w) to apply to the prim w.r.t. its parent prim. Defaults to None,
             in which case the orientation specified in the USD file is used.
 
     Returns:
@@ -82,7 +80,7 @@ def _spawn_from_usd_file(
         cfg: The configuration instance.
         translation: The translation to apply to the prim w.r.t. its parent prim. Defaults to None, in which
             case the translation specified in the generated USD file is used.
-        orientation: The orientation in (w, x, y, z) to apply to the prim w.r.t. its parent prim. Defaults to None,
+        orientation: The orientation in (x, y, z, w) to apply to the prim w.r.t. its parent prim. Defaults to None,
             in which case the orientation specified in the generated USD file is used.
 
     Returns:
@@ -92,13 +90,13 @@ def _spawn_from_usd_file(
         FileNotFoundError: If the USD file does not exist at the given path.
     """
     # check file path exists
-    stage: Usd.Stage = stage_utils.get_current_stage()
+    stage: Usd.Stage = get_current_stage()
     if not stage.ResolveIdentifierToEditTarget(usd_path):
         raise FileNotFoundError(f"USD file not found at path: '{usd_path}'.")
     # spawn asset if it doesn't exist.
-    if not prim_utils.is_prim_path_valid(prim_path):
+    if not stage.GetPrimAtPath(prim_path).IsValid():
         # add prim as reference to stage
-        prim_utils.create_prim(
+        create_prim(
             prim_path,
             usd_path=usd_path,
             translation=translation,
@@ -106,7 +104,7 @@ def _spawn_from_usd_file(
             scale=cfg.scale,
         )
     else:
-        omni.log.warn(f"A prim already exists at prim path: '{prim_path}'.")
+        logging.getLogger(__name__).warning(f"A prim already exists at prim path: '{prim_path}'.")
 
     # modify variants
     if hasattr(cfg, "variants") and cfg.variants is not None:
@@ -150,4 +148,4 @@ def _spawn_from_usd_file(
         bind_visual_material(prim_path + "/base/visuals/soccer_agent_circle", material_path)
 
     # return the prim
-    return prim_utils.get_prim_at_path(prim_path)
+    return stage.GetPrimAtPath(prim_path)

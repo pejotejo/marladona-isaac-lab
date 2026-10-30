@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 
 from isaaclab.envs.manager_based_rl_env import ManagerBasedRLEnv
 from isaaclab.managers import CommandManager, CurriculumManager, TerminationManager
-from isaaclab.ui.widgets import ManagerLiveVisualizer
 
 from isaaclab_marl.assets.agents import Agents
 from isaaclab_marl.assets.env_data import EnvData
@@ -122,18 +121,6 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         if "startup" in self.event_manager.available_modes:
             self.event_manager.apply(mode="startup")
 
-    def setup_manager_visualizers(self):
-        """Creates live visualizers for manager terms."""
-
-        self.manager_visualizers = {
-            "action_manager": ManagerLiveVisualizer(manager=self.action_manager),
-            "observation_manager": ManagerLiveVisualizer(manager=self.observation_manager),
-            "command_manager": ManagerLiveVisualizer(manager=self.command_manager),
-            "termination_manager": ManagerLiveVisualizer(manager=self.termination_manager),
-            "reward_manager": ManagerLiveVisualizer(manager=self.reward_manager),
-            "curriculum_manager": ManagerLiveVisualizer(manager=self.curriculum_manager),
-        }
-
     """
     Operations - MDP
     """
@@ -164,7 +151,7 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
 
         # check if we need to do rendering within the physics loop
         # note: checked here once to avoid multiple checks within the loop
-        is_rendering = self.sim.has_gui() or self.sim.has_rtx_sensors()
+        is_rendering = self.sim.is_rendering
 
         # perform physics stepping
         for _ in range(self.cfg.decimation):
@@ -217,8 +204,9 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
             self.sim.forward()
 
             # if sensors are added to the scene, make sure we render to reflect changes in reset
-            if self.sim.has_rtx_sensors() and self.cfg.rerender_on_reset:
-                self.sim.render()
+            if self.has_rtx_sensors:
+                for _ in range(self.cfg.num_rerenders_on_reset):
+                    self.sim.render()
 
             # trigger recorder terms for post-reset calls
             self.recorder_manager.record_post_reset(reset_env_ids)
@@ -230,84 +218,12 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
             self.event_manager.apply(mode="interval", dt=self.step_dt)
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
-        self.obs_buf = self.observation_manager.compute()
+        for recorder in self.video_recorders:
+            recorder.step()
+        self.obs_buf = self.observation_manager.compute(update_history=True)
 
         # return observations, rewards, resets and extras
         return self.obs_buf, self.reward_buf, self.reset_terminated, self.reset_time_outs, self.extras
-
-    def render(self, recompute: bool = False) -> np.ndarray | None:
-        """Run rendering without stepping through the physics.
-
-        By convention, if mode is:
-
-        - **human**: Render to the current display and return nothing. Usually for human consumption.
-        - **rgb_array**: Return an numpy.ndarray with shape (x, y, 3), representing RGB values for an
-          x-by-y pixel image, suitable for turning into a video.
-
-        Args:
-            recompute: Whether to force a render even if the simulator has already rendered the scene.
-                Defaults to False.
-
-        Returns:
-            The rendered image as a numpy array if mode is "rgb_array". Otherwise, returns None.
-
-        Raises:
-            RuntimeError: If mode is set to "rgb_data" and simulation render mode does not support it.
-                In this case, the simulation render mode must be set to ``RenderMode.PARTIAL_RENDERING``
-                or ``RenderMode.FULL_RENDERING``.
-            NotImplementedError: If an unsupported rendering mode is specified.
-        """
-        # run a rendering step of the simulator
-        # if we have rtx sensors, we do not need to render again sin
-        if not self.sim.has_rtx_sensors() and not recompute:
-            self.sim.render()
-        # decide the rendering mode
-        if self.render_mode == "human" or self.render_mode is None:
-            return None
-        elif self.render_mode == "rgb_array":
-            # check that if any render could have happened
-            if self.sim.render_mode.value < self.sim.RenderMode.PARTIAL_RENDERING.value:
-                raise RuntimeError(
-                    f"Cannot render '{self.render_mode}' when the simulation render mode is"
-                    f" '{self.sim.render_mode.name}'. Please set the simulation render mode to:"
-                    f"'{self.sim.RenderMode.PARTIAL_RENDERING.name}' or '{self.sim.RenderMode.FULL_RENDERING.name}'."
-                    " If running headless, make sure --enable_cameras is set."
-                )
-            # create the annotator if it does not exist
-            if not hasattr(self, "_rgb_annotator"):
-                import omni.replicator.core as rep
-
-                # create render product
-                self._render_product = rep.create.render_product(
-                    self.cfg.viewer.cam_prim_path, self.cfg.viewer.resolution
-                )
-                # create rgb annotator -- used to read data from the render product
-                self._rgb_annotator = rep.AnnotatorRegistry.get_annotator("rgb", device="cpu")
-                self._rgb_annotator.attach([self._render_product])
-            # obtain the rgb data
-            rgb_data = self._rgb_annotator.get_data()
-            # convert to numpy array
-            rgb_data = np.frombuffer(rgb_data, dtype=np.uint8).reshape(*rgb_data.shape)
-            # return the rgb data
-            # note: initially the renerer is warming up and returns empty data
-            if rgb_data.size == 0:
-                return np.zeros((self.cfg.viewer.resolution[1], self.cfg.viewer.resolution[0], 3), dtype=np.uint8)
-            else:
-                return rgb_data[:, :, :3]
-        else:
-            raise NotImplementedError(
-                f"Render mode '{self.render_mode}' is not supported. Please use: {self.metadata['render_modes']}."
-            )
-
-    def close(self):
-        if not self._is_closed:
-            # destructor is order-sensitive
-            del self.command_manager
-            del self.reward_manager
-            del self.termination_manager
-            del self.curriculum_manager
-            # call the parent class to close the environment
-            super().close()
 
     """
     Helper functions.
@@ -346,6 +262,8 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         Args:
             env_ids: List of environment ids which must be reset
         """
+        if env_ids is None or isinstance(env_ids, slice):
+            env_ids = torch.arange(self.num_envs, device=self.device)[slice(None) if env_ids is None else env_ids]
         # update the curriculum for environments that need a reset
         training_env_ids = self.env_data.combine_index(env_ids, self.env_data.is_training_env)
         self.curriculum_manager.compute(env_ids=training_env_ids)

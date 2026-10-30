@@ -32,7 +32,7 @@ def transform2dPos(ref_pose, pos):
 
 @torch.jit.script
 def get_yaw_angle(quat):
-    return euler_xyz_from_quat(quat)[2]
+    return euler_xyz_from_quat(quat, wrap_to_2pi=True)[2]
 
 
 @torch.jit.script

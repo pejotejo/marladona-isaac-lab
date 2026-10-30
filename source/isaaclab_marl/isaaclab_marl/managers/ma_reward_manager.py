@@ -33,10 +33,10 @@ class MultiAgentRewardManager(RewardManager):
         self.performance_metrics = {"average_score": 0}
 
         # Overwrite and reinitialize the following members.
-        for term_name in self._term_names:
-            self._episode_sums[term_name] = torch.zeros(
-                self.num_envs * self.num_agents_per_env, dtype=torch.float, device=self.device
-            )
+        self._episode_sum_buf = torch.zeros(
+            self.num_envs * self.num_agents_per_env, len(self._term_names), device=self.device
+        )
+        self._episode_sums = {name: self._episode_sum_buf[:, i] for i, name in enumerate(self._term_names)}
         # create buffer for managing reward per environment
         self._reward_buf = torch.zeros(self.num_envs * self.num_agents_per_env, dtype=torch.float, device=self.device)
 
