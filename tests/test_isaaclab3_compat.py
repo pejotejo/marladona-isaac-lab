@@ -34,6 +34,9 @@ def test_registered_configs_keep_physx_and_training_defaults(task):
     assert runner.policy.actor_hidden_dims == [128, 128, 128]
     assert runner.policy.critic_hidden_dims == [128, 128, 128]
     assert runner.algorithm.learning_rate == 1e-3
+    assert cfg.soccer_game.num_actions == 7
+    assert cfg.soccer_game.agent_id_control == [[1, 3, 3], [3, 3, 3]]
+    assert not runner.policy_replay.dynamic_generate_replay_level
 
 
 @pytest.mark.parametrize("backend, writer_class", [("wandb", "WandbLogWriter"), ("neptune", "NeptuneLogWriter")])
@@ -60,6 +63,27 @@ def test_external_loggers_use_rsl_rl_writer_api(monkeypatch, tmp_path, backend, 
     manager.init_writer()
     manager.init_writer()
     assert calls == [(str(tmp_path), f"{backend}-test"), (manager.env.cfg, manager.cfg)]
+
+
+def test_single_field_logging_handles_no_evaluation_episodes():
+    from rsl_marl.utils.log_manager import LogManager
+
+    calls = []
+    manager = LogManager.__new__(LogManager)
+    manager.tot_timesteps = manager.tot_time = 0
+    manager.num_steps_per_env = manager.total_num_training_actors = 1
+    manager.env = SimpleNamespace(num_envs=1, env_data=SimpleNamespace(num_agents_per_env=6))
+    manager.alg = SimpleNamespace(actor_critic=SimpleNamespace(action_std=torch.ones(1, 7)), learning_rate=1e-3)
+    manager.writer = SimpleNamespace(add_scalar=lambda name, *args: calls.append(name))
+    manager.log({
+        "collection_time": 1.0, "learn_time": 1.0, "it": 0, "tot_iter": 1, "num_learning_iterations": 1,
+        "ep_infos": [], "mean_value_loss": 0, "mean_surrogate_loss": 0, "entropy_loss": 0,
+        "scorebufferBlue": [1], "scorebufferRed": [0], "scorebufferBlueEval": [], "scorebufferRedEval": [],
+        "metric_buffer_dict": {"reward": []}, "metric_buffer_dict_eval": {"reward": []},
+        "metric_name_list": ["reward"], "init_pos_level": 0,
+    })
+    assert "Train/mean_score_blue_all" in calls
+    assert "Eval/mean_score_blue_all" not in calls
 
 
 def signal(env):

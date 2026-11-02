@@ -43,6 +43,10 @@ def normalize_pose(pose, field_length, field_width, normalize=False):
 
 # Observation Shape:
 # (num_envs * num_agents_per_env, obs_dim,)
+def kick_state(env: SoccerMARLEnv) -> torch.Tensor:
+    return env.action_manager.get_term("motion").kick_state
+
+
 def base_own_vel(env: SoccerMARLEnv, asset_cfg: SceneEntityCfg = SceneEntityCfg("agents")) -> torch.Tensor:
     ego_base_vel_w = torch.cat([env.agents.base_lin_vel_w, env.agents.base_ang_vel_w.unsqueeze(-1)], dim=-1)
     ego_base_vel_w[:, env.env_data.num_agents_per_team :] *= -1

@@ -196,7 +196,7 @@ class OnPolicyRunner:
                         )
                     actions[self.env_data.bots_actor_index] = self.bot_policy.act(
                         obs_dict["bots"],
-                        actions,
+                        self.env.unwrapped.action_manager.action,
                         self.env_data.bots_actor_index,
                         configs=["keeper"] + ["player"] * (self.env_data.num_agents_per_team - 1),
                     )
@@ -285,6 +285,7 @@ class OnPolicyRunner:
                 action_log = actions
                 # Learning step
                 start = stop
+                critic_obs = torch.cat([obs_dict["critic"], obs_dict["neighbor_critic"]], dim=1)
                 self.alg.compute_returns(critic_obs[self.env_data.training_actor_index])
 
             policy_good_enough = (

@@ -30,7 +30,6 @@ if TYPE_CHECKING:
     from isaaclab_marl.assets.agents import Agents
 
 from isaaclab.managers.action_manager import ActionTermCfg
-from isaaclab.utils.math import quat_apply_inverse
 
 from isaaclab_marl.utils.math_utils import rotate2d
 
@@ -147,128 +146,141 @@ class BaseMovementAction(ActionTerm, MultiAgentAction):
         self._torque[inactive_agents] = 0
 
 
-class BallControlAction(ActionTerm, MultiAgentAction):
-    cfg: ActionTermCfg
-    """The configuration of the action term."""
-    _asset: Articulation
-    """The articulation asset on which the action term is applied."""
-    _scale: torch.Tensor | float
-    """The scaling factor applied to the input action."""
-    _offset: torch.Tensor | float
-    """The offset applied to the input action."""
-    _clip: torch.Tensor
-    """The clip applied to the input action."""
+class SoccerMotionAction(BaseMovementAction):
+    """Walk or execute a latched approach, alignment and kick request for each player."""
 
     def __init__(self, cfg: ActionTermCfg, env: SoccerMARLEnv) -> None:
-        # initialize the action term
         super().__init__(cfg, env)
-
         self.ball = env.ball
-        self.agents = env.agents
-        self.ball_cfg = env.ball.ball_cfg
-        # # create tensors for raw and processed actions
-        self._raw_actions = torch.zeros(self.num_envs, self.num_agents_per_env, self.action_dim, device=self.device)
-        self._processed_actions = torch.zeros_like(self.raw_actions)
-        self._scale = 1.0
-        self._offset = 0.0
-
-        self.total_target_cmd_w = torch.zeros(self.num_envs, 3, device=self.device)
-
-        self._force = torch.zeros(self.num_envs, 3, device=self.device)
-        self._torque = torch.zeros(self.num_envs, 3, device=self.device)
-
-    """
-    Properties.
-    """
+        self.ball_cfg = self.ball.ball_cfg
+        self._kick_active = torch.zeros(self.num_envs, self.num_agents_per_env, dtype=torch.bool, device=self.device)
+        self._kick_requested = torch.zeros_like(self._kick_active)
+        self._target = torch.zeros_like(self._raw_actions[..., 4:6])
+        self._strength = torch.zeros_like(self._raw_actions[..., 6])
+        self._remaining = torch.zeros_like(self._strength)
+        self._cooldown = torch.zeros_like(self._strength)
+        self._ball_force = torch.zeros(self.num_envs, 1, 3, device=self.device)
 
     @property
     def action_dim(self) -> int:
-        return 2
+        return 7
 
     @property
-    def raw_actions(self) -> torch.Tensor:
-        return self._raw_actions
-
-    @property
-    def processed_actions(self) -> torch.Tensor:
-        return self._processed_actions
-
-    @property
-    def env_data(self) -> torch.Tensor:
-        return self._env.env_data
-
-    """
-    Operations.
-    """
+    def kick_state(self) -> torch.Tensor:
+        return torch.cat(
+            [
+                self._kick_active.unsqueeze(-1),
+                self._kick_requested.unsqueeze(-1),
+                self._target,
+                self._strength.unsqueeze(-1),
+                (self._remaining / self.ball_cfg.kick_timeout_s).unsqueeze(-1),
+                (self._cooldown / self.ball_cfg.kick_cooldown_s).unsqueeze(-1),
+            ],
+            dim=-1,
+        ).flatten(0, 1)
 
     def process_actions(self, actions: torch.Tensor):
-        # store the raw actions
-        self._raw_actions[:] = actions.view(self.num_envs, self.num_agents_per_env, -1)
-        # apply the affine transformations
-        self._processed_actions = self._raw_actions * self._scale + self._offset
-        # clip actions
+        if not torch.isfinite(actions).all():
+            raise ValueError("Motion commands must be finite.")
+        super().process_actions(actions)
+        self._processed_actions.clamp_(-1.0, 1.0)
+        self._processed_actions[..., 3].clamp_(0.0, 1.0)
+        self._processed_actions[..., 6].clamp_(0.0, 1.0)
+        requested = self._processed_actions[..., 3] > 0.5
+        start = requested & ~self._kick_requested & ~self._kick_active & (self._cooldown <= 0)
+        start &= ~self._env.env_data.inactive.view(self.num_envs, -1)
+        self._target[start] = self._processed_actions[..., 4:6][start]
+        self._strength[start] = self._processed_actions[..., 6][start]
+        self._remaining[start] = self.ball_cfg.kick_timeout_s
+        self._kick_active |= start
+        self._kick_requested[:] = requested
 
     def reset(self, env_ids: Sequence[int] | None = None) -> None:
-        self._raw_actions[env_ids] = 0.0
-
-    def apply_actions(self):
-        self.compute()
-        self._asset.permanent_wrench_composer.set_forces_and_torques_index(
-            forces=self._force.unsqueeze(1), torques=self._torque.unsqueeze(1)
-        )
+        if env_ids is None:
+            env_ids = slice(None)
+        super().reset(env_ids)
+        self._processed_actions[env_ids] = 0
+        for state in (
+            self._kick_active,
+            self._kick_requested,
+            self._target,
+            self._strength,
+            self._remaining,
+            self._cooldown,
+        ):
+            state[env_ids] = 0
 
     def compute(self):
-        def expand(env_base_tensor):
-            return self._env.env_data.expand_to_env(env_base_tensor, flatten_type="env")
+        dt = self._env.physics_dt
+        self._cooldown.sub_(dt).clamp_(min=0)
+        self._remaining.sub_(dt).clamp_(min=0)
+        self._kick_active &= (self._remaining > 0) & ~self._env.env_data.inactive.view(self.num_envs, -1)
 
-        def expand_vector(env_base_tensor):
-            return self._env.env_data.expand_vector_to_env(env_base_tensor, flatten_type="env")
+        pose = self.agents.base_pose_w.view(self.num_envs, self.num_agents_per_env, 3)
+        ball_pos = self.ball.base_pos_w.unsqueeze(1)
+        target = self._target.clone()
+        target[..., 0] *= self._env.env_data.field_length.unsqueeze(-1) / 2
+        target[..., 1] *= self._env.env_data.field_width / 2
+        target[:, self.num_agents_per_team :] *= -1  # Both teams attack toward negative x in their own frame.
+        ball_to_target = target - ball_pos
+        direction = torch.nn.functional.normalize(ball_to_target, dim=-1)
+        sideways = torch.stack([-direction[..., 1], direction[..., 0]], dim=-1)
+        relative = pose[..., :2] - ball_pos
+        forward_distance = (relative * direction).sum(dim=-1)
+        lateral_distance = (relative * sideways).sum(dim=-1)
+        # Route around the ball when a direct approach from the front would push it away.
+        route_around = forward_distance > -0.5 * relative.norm(dim=-1)
+        side = torch.where(lateral_distance >= 0, 1.0, -1.0)
+        behind_ball = ball_pos - direction * (self.ball_cfg.kick_margin * 0.8)
+        waypoint = ball_pos - direction * 0.35 + sideways * side.unsqueeze(-1) * 0.35
+        approach = torch.where(route_around.unsqueeze(-1), waypoint, behind_ball)
+        delta = approach - pose[..., :2]
+        delta_b = rotate2d(delta[..., 0], delta[..., 1], pose[..., 2])
+        yaw_error = torch.atan2(direction[..., 1], direction[..., 0]) - pose[..., 2]
+        yaw_error = torch.atan2(torch.sin(yaw_error), torch.cos(yaw_error))
 
-        actions = self._processed_actions
-        offset = 0.01
-        target_velocity_cmd_b = torch.zeros_like(actions)
-        target_velocity_cmd_b[..., 0] = actions[..., 0] * torch.sqrt(1 - actions[..., 1] ** 2 / 2)
-        target_velocity_cmd_b[..., 1] = actions[..., 1] * torch.sqrt(1 - actions[..., 0] ** 2 / 2)
-        target_velocity_cmd_b[..., 0] += offset
-        target_velocity_cmd_b[..., 0] /= 2
-
-        target_velocity_cmd_w = rotate2d(
-            target_velocity_cmd_b[..., 0].flatten(),
-            target_velocity_cmd_b[..., 1].flatten(),
-            -self.agents.base_pose_w[..., 2].flatten(),
+        limits = self.agent_cfg.cmd_speed_limit
+        auto_walk = torch.zeros_like(self._processed_actions[..., :3])
+        x_limit = torch.where(delta_b[..., 0] >= 0, limits[0][0], -limits[0][1])
+        auto_walk[..., 0] = 2.0 * delta_b[..., 0] / x_limit
+        auto_walk[..., 1] = 2.0 * delta_b[..., 1] / limits[1][0]
+        auto_walk[..., 2] = 3.0 * yaw_error / limits[2][0]
+        self._processed_actions[..., :3] = torch.where(
+            self._kick_active.unsqueeze(-1), auto_walk, self._raw_actions[..., :3]
         )
+        super().compute()
 
-        ball_pos_b = self.agents.ball_pos_b
-        ball_controllable = torch.logical_and(
-            torch.logical_and(
-                torch.logical_and(ball_pos_b.norm(dim=-1) < self.ball_cfg.kick_margin, ball_pos_b[:, 0] > 0),
-                torch.abs(ball_pos_b[:, 1]) < 0.1,
-            ),
-            expand(self._asset.data.root_pos_w.torch[:, 2]) < 0.08,
-        ).unsqueeze(-1)
-
-        target_velocity_cmd_w *= ball_controllable
-
-        target_force_cmd_w = (
-            (target_velocity_cmd_w - expand_vector(self.ball.base_lin_vel_w))
-            * self.ball_cfg.kick_force_gain
-            * ball_controllable
+        ball_b = self.agents.ball_pos_b.view(self.num_envs, self.num_agents_per_env, 2)
+        ready = self._kick_active & (self._strength > 0) & (ball_to_target.norm(dim=-1) > 1e-4)
+        ready &= (ball_b[..., 0] > 0) & (ball_b.norm(dim=-1) < self.ball_cfg.kick_margin)
+        ready &= ball_b[..., 1].abs() < self.ball_cfg.kick_lateral_tolerance
+        ready &= yaw_error.abs() < self.ball_cfg.kick_alignment_tolerance
+        ready &= (self.ball.asset.data.root_pos_w.torch[:, 2] < 0.08).unsqueeze(-1)
+        # Resolve simultaneous requests to the closest ready player, once per ball.
+        distances = torch.where(ready, ball_b.norm(dim=-1), float("inf"))
+        chosen = distances.argmin(dim=1)
+        env_ids = ready.any(dim=1).nonzero(as_tuple=False).flatten()
+        players = chosen[env_ids]
+        velocity = self.ball.asset.data.root_state_w.torch[env_ids, 7:].clone()
+        velocity[:, :2] = (
+            direction[env_ids, players]
+            * self._strength[env_ids, players].unsqueeze(-1)
+            * self.ball_cfg.max_kick_speed
         )
+        velocity[:, 2:] = 0
+        # shortcut: proxy kicks set ball velocity; replace when adding articulated humanoid motions.
+        if env_ids.numel():
+            self.ball.asset.write_root_com_velocity_to_sim_index(root_velocity=velocity, env_ids=env_ids)
+        self._kick_active[env_ids, players] = False
+        self._remaining[env_ids, players] = 0
+        self._cooldown[env_ids, players] = self.ball_cfg.kick_cooldown_s
 
-        inactive_agent = self._env.env_data.inactive.flatten()
-
-        target_velocity_cmd_w[inactive_agent] = 0.0
-        target_force_cmd_w[inactive_agent] = 0.0
-        ball_controllable[inactive_agent] = False
-
-        # total_target_cmd_w = torch.mean(target_velocity_cmd_w.view(self.env_data.team_flatten_pose_shape), dim=1)
-        self.total_target_cmd_w[:, :2] = torch.sum(target_force_cmd_w.view(self.env_data.team_flatten_pos_shape), dim=1)
-
-        ball_state_modifyable = torch.any(ball_controllable.view(self.env_data.team_flatten_base_shape), dim=1)
-        self._force[:] = quat_apply_inverse(self._asset.data.root_quat_w.torch, self.total_target_cmd_w)
-
-        # passive physic: from environment friction
-        self._torque[:] = -self._asset.data.root_ang_vel_b.torch * self.ball.rolling_friction
+    def apply_actions(self):
+        super().apply_actions()
+        self.ball.asset.permanent_wrench_composer.set_forces_and_torques_index(
+            forces=self._ball_force,
+            torques=(-self.ball.asset.data.root_ang_vel_b.torch * self.ball.rolling_friction).unsqueeze(1),
+        )
 
 
 class MultiAgentActionManager(ManagerBase, MultiAgentAction):
@@ -403,8 +415,8 @@ class MultiAgentActionManager(ManagerBase, MultiAgentAction):
         if env_ids is None:
             env_ids = slice(None)
         # reset the action history
-        self._prev_action[env_ids] = 0.0
-        self._action[env_ids] = 0.0
+        self._prev_action.view(self.num_envs, self.num_agents_per_env, -1)[env_ids] = 0.0
+        self._action.view(self.num_envs, self.num_agents_per_env, -1)[env_ids] = 0.0
         # reset all action terms
         for term in self._terms.values():
             term.reset(env_ids=env_ids)
@@ -421,8 +433,8 @@ class MultiAgentActionManager(ManagerBase, MultiAgentAction):
             action: The actions to process.
         """
         # check if action dimension is valid
-        if self.total_action_dim != action.shape[1]:
-            raise ValueError(f"Invalid action shape, expected: {self.total_action_dim}, received: {action.shape[1]}.")
+        if action.shape != self._action.shape:
+            raise ValueError(f"Invalid action shape, expected: {self._action.shape}, received: {action.shape}.")
         # store the input actions
         self._prev_action[:] = self._action
         self._action[:] = action.to(self.device)

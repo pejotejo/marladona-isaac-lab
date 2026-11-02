@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from isaaclab.utils import configclass
 
-from isaaclab_marl.config import APPLY_RANDOMIZATION, FIELD_LEVEL_SETTINGS, GOAL_LEVEL_SETTINGS, KICK_MODEL
+from isaaclab_marl.config import APPLY_RANDOMIZATION, BALL_MAX_SPEED, FIELD_LEVEL_SETTINGS, GOAL_LEVEL_SETTINGS, KICK_MODEL
 
 if TYPE_CHECKING:
     from torch import Tensor
@@ -46,6 +46,11 @@ class SoccerBallCfg:
     kick_force_gain = 0.5
     kick_area = "default"  # default, fullcircle
     kick_margin = 0.2
+    max_kick_speed = BALL_MAX_SPEED
+    kick_alignment_tolerance = 0.12  # rad
+    kick_lateral_tolerance = 0.04  # m
+    kick_cooldown_s = 0.5
+    kick_timeout_s = 15.0
 
 
 @configclass
@@ -74,15 +79,15 @@ class SoccerAgentsCfg:
 class SoccerGameCfg:
     num_teams: int = 2  # 2 teams
     num_agents_per_team: int = 3  # max 5 players per team
-    num_actions = 5
+    num_actions = 7
 
     # 0 for no control, 1 for policy, 2 for policy replay, 3 for bots
-    default_control = [1, 2]  # blue, red agents
+    default_control = [3, 3]  # blue, red agents
     agent_id_control = None  # [[1, 1 ... ],[2, 2 ...]] default if not set
 
     eval_env_ratio = 0.15
 
-    num_agents_range = [1, num_agents_per_team]
+    num_agents_range = None
 
     level_settings = [[2, 2], [3, 2], [3, 3], [3, 4]]
 
@@ -92,10 +97,22 @@ class SoccerGameCfg:
     create_field_visuals = False
 
     def __post_init__(self):
+        if self.num_agents_range is None:
+            self.num_agents_range = [self.num_agents_per_team, self.num_agents_per_team]
         if not self.agent_id_control:
             self.agent_id_control = [
                 [control for _ in range(self.num_agents_per_team)] for control in self.default_control
             ]
+            self.agent_id_control[0][0] = 1
+        if len(self.agent_id_control) != 2 or any(
+            len(team) != self.num_agents_per_team for team in self.agent_id_control
+        ):
+            raise ValueError("agent_id_control must contain one control value per player in both teams.")
+        controls = [control for team in self.agent_id_control for control in team]
+        if controls.count(1) != 1 or any(control not in (1, 3) for control in controls):
+            raise ValueError("Single-agent training requires one learning player and scripted teammates/opponents.")
+        if self.num_agents_range != [self.num_agents_per_team, self.num_agents_per_team]:
+            raise ValueError("Single-agent training requires fixed, fully active teams.")
 
 
 class EnvCoreData:
@@ -270,8 +287,7 @@ class EnvData(EnvCoreData):
             self.is_training_env[shuffled_env_index[: -self.num_eval_envs]] = True
         self.is_eval_env = torch.logical_not(self.is_training_env)
 
-        for i, control_type in enumerate(self.cfg.default_control):
-            self.agent_control_type[:, i, :] = control_type
+        self.agent_control_type[:] = self.agent_ids_control
 
         self.regenerate_level_config(self.is_training_env)
         self.active_agent_per_team[self.is_eval_env] = torch.randint(

@@ -61,16 +61,46 @@ uv pip install -e source/isaaclab_marl -e source/rsl_marl
 python scripts/rsl_rl/train.py --task=Isaac-Soccer-v0 --headless
 ```
 
-We assumed `wks_logs` to be our default root log folder for all our scripts. An example policy is already provided there. You can test its performance by running the following command:
+On the `testing-single-humanoid` branch, each field has **one learning blue player, two scripted blue teammates, and three scripted red opponents**. PPO collects transitions only from the learning player. Team sizes stay fixed; policy replay and self-play are disabled. The existing PPO runner and neighbor observations are reused for single-agent learning.
+
+Train a new seven-output policy with:
 
 ```bash
-python scripts/rsl_rl/play.py --task=Isaac-Soccer-Play-v0 --experiment_name=00_example_policies --load_run=24_09_28_11_56_41_3v3 
+python scripts/rsl_rl/train.py --task=Isaac-Soccer-v0 --headless
 ```
-Note: The number of agents can be configured via the `SoccerMARLEnvPlayCfg` class.
 
-For a short GPU smoke test, add `--num_envs=16 --max_iterations=2` to the training command. Omit `--headless` to open the Isaac Sim viewer. `--video` uses Isaac Lab 3.0's internal video recorder. The custom MARL runner, observation layout, and PPO defaults are retained.
+For a short GPU smoke test, add `--num_envs=16 --max_iterations=2`. Omit `--headless` to open the Isaac Sim viewer. `--video` uses Isaac Lab 3.0's internal video recorder. Runs are stored under `wks_logs/single_humanoid_soccer` by default.
 
-CPU compatibility tests cover the migrated configurations, managers, and asset APIs. Full Isaac Sim/PhysX training, viewer/video recording, and supplied-checkpoint inference still require validation.
+Play a trained checkpoint with the same scripted teammates and opponents:
+
+```bash
+python scripts/rsl_rl/play.py --task=Isaac-Soccer-Play-v0 --load_run='<run-directory>'
+```
+
+The supplied five-output MARL checkpoints are incompatible with this branch's action and observation shapes; train a new policy. Playback defaults to 3v3 to match training.
+
+## Policy and motion interface
+
+The policy emits `[vx, vy, yaw_rate, kick, target_x, target_y, strength]`, with no `quick` flag.
+
+| Output | Range | Meaning |
+| --- | --- | --- |
+| `vx` | `[-1, 1]` | Body-frame forward/backward walking request; scaled to +0.35 / -0.25 m/s. |
+| `vy` | `[-1, 1]` | Body-frame sideways walking request; scaled to ±0.25 m/s. |
+| `yaw_rate` | `[-1, 1]` | Rotation request; scaled to ±2.5 rad/s. |
+| `kick` | `[0, 1]` | A rising crossing above 0.5 requests a complete approach, alignment, and kick. |
+| `target_x`, `target_y` | `[-1, 1]` | Ball destination in normalized, team-relative field coordinates. |
+| `strength` | `[0, 1]` | Fraction of `soccer_game.ball.max_kick_speed`; zero produces no strike. |
+
+The target frame has its origin at the field center, with x scaled by half the field length and y by half the field width. It matches the policy's ball/neighbor observations: **both teams attack toward negative x**. `(-1, 0)` targets the center of the opponent's goal. Red's physical field coordinates are rotated by 180 degrees; arena placement in the world does not affect the target.
+
+Walking requests use the existing combined translation limit. On a kick request, the motion action latches the destination and strength, walks behind the ball, turns toward the destination, and strikes only when the ball is in front, within 0.2 m, within 0.04 m laterally, and aligned within 0.12 rad. Walking outputs and subsequent destination changes are ignored while this motion is active. A request times out after 15 seconds; a completed strike has a 0.5-second cooldown. Lower `kick` to 0.5 or below, then raise it again after completion/cooldown to request another kick. Field resets clear pending motions. Policy and critic observations include the pending request, latched target/strength, timeout, and cooldown.
+
+The default maximum outgoing ball speed is approximately 0.79 m/s (`BALL_MAX_SPEED`), with `speed = strength * max_kick_speed`. This controls outgoing speed, not arrival speed or guaranteed travel distance; friction and collisions still apply. Simultaneous eligible kicks are resolved to the closest player.
+
+**The supplied robot assets remain planar rigid-body proxies.** Walking uses the existing velocity/force controller, and the proxy kick sets the ball's outgoing velocity. This branch supplies the high-level motion interface and simulated approach/kick behavior; an articulated humanoid needs its own locomotion and calibrated kick controller behind that interface. Quick kicks and relaxed alignment are omitted.
+
+Tests cover single-learner masks, seven-output PPO, motion behavior, and the migrated Isaac Lab APIs. Full Isaac Sim/PhysX training, viewer/video recording, and new-checkpoint inference still require validation.
 
 To run the focused compatibility tests in the installed environment:
 

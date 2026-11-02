@@ -220,6 +220,7 @@ class LogManager:
         if len(locs["scorebufferBlue"]) > 0:
             self.writer.add_scalar("Train/mean_score_blue_all", statistics.mean(locs["scorebufferBlue"]), locs["it"])
             self.writer.add_scalar("Train/mean_score_red_all", statistics.mean(locs["scorebufferRed"]), locs["it"])
+        if len(locs["scorebufferBlueEval"]) > 0:
             self.writer.add_scalar("Eval/mean_score_blue_all", statistics.mean(locs["scorebufferBlueEval"]), locs["it"])
             self.writer.add_scalar("Eval/mean_score_red_all", statistics.mean(locs["scorebufferRedEval"]), locs["it"])
 

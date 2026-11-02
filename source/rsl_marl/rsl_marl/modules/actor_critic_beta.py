@@ -148,7 +148,14 @@ class ActorCriticBeta(nn.Module):
         params = self.actor(full_observations)
         alpha, beta = self.get_beta_parameters(params)
         actions_mean = alpha / (alpha + beta)
-        return (actions_mean - 0.5) * 2.0
+        return self.to_motion_actions(actions_mean)
+
+    @staticmethod
+    def to_motion_actions(actions):
+        commands = (actions - 0.5) * 2.0
+        commands[..., 3] = actions[..., 3]
+        commands[..., 6] = actions[..., 6]
+        return commands
 
     def evaluate(self, critic_observations, **kwargs):
         critic_obs = critic_observations[:, : -self.total_num_neighbor_obs]

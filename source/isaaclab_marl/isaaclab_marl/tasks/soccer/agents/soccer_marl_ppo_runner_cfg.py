@@ -27,7 +27,7 @@ class SoccerMARLPolicyCfg:
 
 @configclass
 class PolicyReplayCfg:
-    dynamic_generate_replay_level = True
+    dynamic_generate_replay_level = False
     shuffle = False
     score_difference = 0.75
     load_path: str = ""
@@ -71,7 +71,7 @@ class SoccerMARLPPORunnerCfg:
     num_steps_per_env = 48
     max_iterations = 10000
     save_interval = {"0": 20, "200": 50, "500": 100, "2000": 500}
-    experiment_name = "marl_soccer"
+    experiment_name = "single_humanoid_soccer"
     run_name = ""
     empirical_normalization = False
     logger = "tensorboard"

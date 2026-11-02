@@ -4,20 +4,21 @@ from types import SimpleNamespace
 
 import pytest
 import torch
-import warp as wp
 
 pytest.importorskip("isaaclab")
 
+import warp as wp
+
 from isaaclab.managers import ActionTermCfg
-from isaaclab.utils.math import quat_apply, quat_from_euler_xyz
+from isaaclab.utils.math import quat_from_euler_xyz
 from isaaclab.utils.warp import ProxyArray
 from isaaclab.utils.wrench_composer import WrenchComposer
 from isaaclab_marl.assets.agents import Agents
 from isaaclab_marl.assets.env_data import EnvCoreData, SoccerGameCfg
 from isaaclab_marl.assets.soccer_ball import SoccerBall
 from isaaclab_marl.managers.ma_action_manager import (
-    BallControlAction,
     BaseMovementAction,
+    SoccerMotionAction,
 )
 
 
@@ -90,6 +91,7 @@ def scene():
     env = SimpleNamespace(
         num_envs=3,
         device="cpu",
+        physics_dt=0.02,
         env_data=data,
         agents=agents,
         ball=ball,
@@ -151,7 +153,7 @@ def test_native_wrench_composer_replaces_local_player_forces(scene):
     assert torch.count_nonzero(wp.to_torch(torque)) == 0
 
 
-def test_ball_world_force_is_converted_to_local_xyzw_frame(scene):
+def test_motion_action_preserves_ball_rolling_friction(scene):
     quat = quat_from_euler_xyz(
         torch.zeros(3), torch.zeros(3), torch.full((3,), torch.pi / 2)
     )
@@ -162,18 +164,15 @@ def test_ball_world_force_is_converted_to_local_xyzw_frame(scene):
     )
     scene.agents.ball_pos_b = torch.ones(12, 2)
     scene.agents.ball_pos_b[::4] = torch.tensor([0.1, 0.0])
-    term = BallControlAction(
-        ActionTermCfg(class_type=BallControlAction, asset_name="ball"), scene
+    term = SoccerMotionAction(
+        ActionTermCfg(class_type=SoccerMotionAction, asset_name="agents"), scene
     )
-    commands = torch.zeros(12, 2)
-    commands[::4, 0] = 1
+    commands = torch.zeros(12, 7)
     term.process_actions(commands)
     term.apply_actions()
     force, torque, is_global = (
         scene.ball.asset.permanent_wrench_composer.get_forces_and_torques()
     )
     assert is_global is False
-    force_w = quat_apply(quat, wp.to_torch(force)[:, 0])
-    torch.testing.assert_close(force_w[:, 0], torch.full((3,), 0.2525))
-    torch.testing.assert_close(force_w[:, 1:], torch.zeros(3, 2), atol=1e-6, rtol=0)
+    assert torch.count_nonzero(wp.to_torch(force)) == 0
     torch.testing.assert_close(wp.to_torch(torque)[:, 0, 2], torch.full((3,), -0.0001))

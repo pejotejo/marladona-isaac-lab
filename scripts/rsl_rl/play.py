@@ -19,8 +19,8 @@ from isaaclab.app import AppLauncher
 import cli_args  # isort: skip
 
 
-VISUALIZE_VALUE_FUN = True
-NUM_OF_PLAYERS_TO_VISUALIZE = 3
+VISUALIZE_VALUE_FUN = False
+NUM_OF_PLAYERS_TO_VISUALIZE = 1
 VISUALIZATION_INTERVAL = 2
 PLOT_VALUE_FUNC_LIST = ["base_own_pose_w", "ball_pos_w"]
 VISUALIZE_ENV = 0
@@ -132,7 +132,7 @@ def main():
     agent_cfg.policy_replay.dynamic_generate_replay_level = False
 
     # specify directory for logging experiments
-    log_root_path = os.path.join(WKS_LOGS_DIR, args_cli.experiment_name)
+    log_root_path = os.path.join(WKS_LOGS_DIR, agent_cfg.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
@@ -193,7 +193,15 @@ def main():
             # agent stepping
             obs = torch.cat([obs_dict["policy"], obs_dict["neighbor"]], dim=1)
 
-            actions = policy(obs)
+            controlled = env_data.training_actor_index | env_data.eval_actor_index
+            actions = torch.zeros(env_data.num_agents, env.num_actions, device=env.device)
+            actions[controlled] = policy(obs[controlled])
+            actions[env_data.bots_actor_index] = ppo_runner.bot_policy.act(
+                obs_dict["bots"],
+                env.unwrapped.action_manager.action,
+                env_data.bots_actor_index,
+                configs=["keeper"] + ["player"] * (env_data.num_agents_per_team - 1),
+            )
 
             obs_dict, _, _, _ = env.step(actions)
         if args_cli.video:

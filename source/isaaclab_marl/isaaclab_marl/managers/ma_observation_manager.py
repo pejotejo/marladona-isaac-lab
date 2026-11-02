@@ -199,6 +199,8 @@ class MultiAgentObservationManager(ObservationManager):
                 obs_dims = tuple(term_cfg.func(self._env, **term_cfg.params).shape)
                 hist = term_cfg.history_length if term_cfg.history_length else 1
                 if group_name in ["policy", "critic", "neighbor", "neighbor_critic"]:
+                    if term_name == "kick_state":
+                        self._group_symmetry_index[group_name].append(accumulated_obs_dim + 3)
                     if "pose" in term_name or "vel" in term_name or "pos" in term_name:
                         unit_length = (
                             2

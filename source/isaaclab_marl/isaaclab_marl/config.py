@@ -29,7 +29,7 @@ WORLD_POS_NORMALIZATION = True
 
 POLICY_CLASS_NAME = "ActorCriticBeta"  # "ActorCriticBeta" or "ActorCritic"
 
-TRAINING_MODUS = "selfplay"  # "none" or "mirror" or "selfplay" or "bot
+TRAINING_MODUS = "bot"
 TERMINATION = True
 
 SIMULATION2D_SCALER = 19

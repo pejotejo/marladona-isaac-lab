@@ -45,7 +45,7 @@ from isaaclab_marl.assets.agent_cfg import AgentCfg, AgentTeamCfg
 from isaaclab_marl.assets.env_data import SoccerGameCfg
 from isaaclab_marl.assets.soccer_ball_cfg import BallCfg
 from isaaclab_marl.config import FIELD_LEVEL_SETTINGS, GOAL_LEVEL_SETTINGS, MARL_ROOT_DIR, WORLD_POS_NORMALIZATION
-from isaaclab_marl.managers.ma_action_manager import BallControlAction, BaseMovementAction
+from isaaclab_marl.managers.ma_action_manager import SoccerMotionAction
 
 from isaaclab_marl.terrains import TerrainCfg  # isort: skip
 
@@ -163,8 +163,7 @@ class MySceneCfg(InteractiveSceneCfg):
 class ActionsCfg:
     """Action specifications for the MDP."""
 
-    base_movement = ActionTermCfg(class_type=BaseMovementAction, asset_name="agents")
-    ball_control = ActionTermCfg(class_type=BallControlAction, asset_name="ball")
+    motion = ActionTermCfg(class_type=SoccerMotionAction, asset_name="agents")
 
 
 @configclass
@@ -238,6 +237,7 @@ class ObservationsCfg:
         ball_vel_w = ObsTerm(func=O.ball_vel_w, noise=Unoise(n_min=-0.005, n_max=0.005))
         ball_pos_w = ObsTerm(func=O.ball_pos_w, noise=Unoise(n_min=-0.002, n_max=0.002), params={"normalize": True})
         field_infos = ObsTerm(func=O.field_infos, noise=Unoise(n_min=-0.0, n_max=0.0), params={"normalize": True})
+        kick_state = ObsTerm(func=O.kick_state)
 
     # observation groups
     policy: PolicyCfg = PolicyCfg(enable_corruption=True)
@@ -361,8 +361,8 @@ class SoccerMARLEnvCfg(ManagerBasedRLEnvCfg):
 @configclass
 class SoccerMARLEnvPlayCfg(SoccerMARLEnvCfg):
     soccer_game = SoccerGameCfg(
-        num_agents_per_team=5,
-        num_agents_range=[5, 5],
+        num_agents_per_team=3,
+        num_agents_range=[3, 3],
         eval_env_ratio=0.0,
         level_settings=[[3, 3]],
         create_field_visuals=True,
