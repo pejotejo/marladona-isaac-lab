@@ -27,7 +27,9 @@ class MultiAgentObservationManager(ObservationManager):
         """Number of environments."""
         return self._env.env_data.num_agents_per_team * 2
 
-    def compute_group(self, group_name: str, update_history: bool = True) -> torch.Tensor | dict[str, torch.Tensor]:
+    def compute_group(
+        self, group_name: str, update_history: bool = True
+    ) -> torch.Tensor | dict[str, torch.Tensor]:
         """Computes the observations for a given group.
 
         The observations for a given group are computed by calling the registered functions for each
@@ -98,7 +100,9 @@ class MultiAgentObservationManager(ObservationManager):
                         .reshape(obs.shape[0], -1)
                     )
                 else:
-                    group_obs[term_name] = self._group_obs_term_history_buffer[group_name][term_name].buffer
+                    group_obs[term_name] = self._group_obs_term_history_buffer[
+                        group_name
+                    ][term_name].buffer
             else:
                 group_obs[term_name] = obs
 
@@ -171,7 +175,14 @@ class MultiAgentObservationManager(ObservationManager):
             accumulated_obs_dim = 0
             for term_name, term_cfg in group_cfg_items:
                 # skip non-obs settings
-                if term_name in ["enable_corruption", "concatenate_terms", "history_length", "flatten_history_dim", "history_order", "concatenate_dim"]:
+                if term_name in [
+                    "enable_corruption",
+                    "concatenate_terms",
+                    "history_length",
+                    "flatten_history_dim",
+                    "history_order",
+                    "concatenate_dim",
+                ]:
                     continue
                 # check for non config
                 if term_cfg is None:
@@ -182,7 +193,9 @@ class MultiAgentObservationManager(ObservationManager):
                         f" Received: '{type(term_cfg)}'."
                     )
                 # resolve common terms in the config
-                self._resolve_common_term_cfg(f"{group_name}/{term_name}", term_cfg, min_argc=1)
+                self._resolve_common_term_cfg(
+                    f"{group_name}/{term_name}", term_cfg, min_argc=1
+                )
 
                 # check noise settings
                 if not group_cfg.enable_corruption:
@@ -204,7 +217,12 @@ class MultiAgentObservationManager(ObservationManager):
                             2
                             if "ball" in term_name
                             else (
-                                4 if ("expand_rot" in term_cfg.params.keys() and term_cfg.params["expand_rot"]) else 3
+                                4
+                                if (
+                                    "expand_rot" in term_cfg.params.keys()
+                                    and term_cfg.params["expand_rot"]
+                                )
+                                else 3
                             )
                         )
 
@@ -212,11 +230,17 @@ class MultiAgentObservationManager(ObservationManager):
                         for i in range(num_units):
                             for j in range(hist):
                                 self._group_symmetry_index[group_name].append(
-                                    accumulated_obs_dim + i * unit_length * hist + j + hist
+                                    accumulated_obs_dim
+                                    + i * unit_length * hist
+                                    + j
+                                    + hist
                                 )
                                 if "ball" not in term_name:
                                     self._group_symmetry_index[group_name].append(
-                                        accumulated_obs_dim + i * unit_length * hist + j + 2 * hist
+                                        accumulated_obs_dim
+                                        + i * unit_length * hist
+                                        + j
+                                        + 2 * hist
                                     )
                 self._group_obs_slice_pos[group_name][term_name] = [
                     accumulated_obs_dim,
@@ -227,7 +251,9 @@ class MultiAgentObservationManager(ObservationManager):
                 # create history buffers and calculate history term dimensions
                 if term_cfg.history_length > 0:
                     group_entry_history_buffer[term_name] = CircularBuffer(
-                        max_len=term_cfg.history_length, batch_size=obs_dims[0], device=self._env.device
+                        max_len=term_cfg.history_length,
+                        batch_size=obs_dims[0],
+                        device=self._env.device,
                     )
                     old_dims = list(obs_dims)
                     old_dims.insert(1, term_cfg.history_length)
@@ -244,7 +270,10 @@ class MultiAgentObservationManager(ObservationManager):
                             f"Scale for observation term '{term_name}' in group '{group_name}'"
                             f" is not of type float, int or tuple. Received: '{type(term_cfg.scale)}'."
                         )
-                    if isinstance(term_cfg.scale, tuple) and len(term_cfg.scale) != obs_dims[1]:
+                    if (
+                        isinstance(term_cfg.scale, tuple)
+                        and len(term_cfg.scale) != obs_dims[1]
+                    ):
                         raise ValueError(
                             f"Scale for observation term '{term_name}' in group '{group_name}'"
                             f" does not match the dimensions of the observation. Expected: {obs_dims[1]}"
@@ -252,7 +281,9 @@ class MultiAgentObservationManager(ObservationManager):
                         )
 
                     # cast the scale into torch tensor
-                    term_cfg.scale = torch.tensor(term_cfg.scale, dtype=torch.float, device=self._env.device)
+                    term_cfg.scale = torch.tensor(
+                        term_cfg.scale, dtype=torch.float, device=self._env.device
+                    )
 
                 # prepare modifiers for each observation
                 if term_cfg.modifiers is not None:
@@ -267,7 +298,11 @@ class MultiAgentObservationManager(ObservationManager):
                                         f"Modifier function '{mod_cfg.func}' for observation term '{term_name}'"
                                         f" is not a subclass of 'ModifierBase'. Received: '{type(mod_cfg.func)}'."
                                     )
-                                mod_cfg.func = mod_cfg.func(cfg=mod_cfg, data_dim=obs_dims, device=self._env.device)
+                                mod_cfg.func = mod_cfg.func(
+                                    cfg=mod_cfg,
+                                    data_dim=obs_dims,
+                                    device=self._env.device,
+                                )
 
                                 # add to list of class modifiers
                                 self._group_obs_class_modifiers.append(mod_cfg.func)
@@ -287,8 +322,16 @@ class MultiAgentObservationManager(ObservationManager):
                         # check if term's arguments are matched by params
                         term_params = list(mod_cfg.params.keys())
                         args = inspect.signature(mod_cfg.func).parameters
-                        args_with_defaults = [arg for arg in args if args[arg].default is not inspect.Parameter.empty]
-                        args_without_defaults = [arg for arg in args if args[arg].default is inspect.Parameter.empty]
+                        args_with_defaults = [
+                            arg
+                            for arg in args
+                            if args[arg].default is not inspect.Parameter.empty
+                        ]
+                        args_without_defaults = [
+                            arg
+                            for arg in args
+                            if args[arg].default is inspect.Parameter.empty
+                        ]
                         args = args_without_defaults + args_with_defaults
                         # ignore first two arguments for env and env_ids
                         # Think: Check for cases when kwargs are set inside the function?

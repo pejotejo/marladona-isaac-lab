@@ -13,7 +13,13 @@ from typing import TYPE_CHECKING
 from pxr import Usd
 
 from isaaclab.sim import schemas
-from isaaclab.sim.utils import bind_visual_material, clone, create_prim, get_current_stage, select_usd_variants
+from isaaclab.sim.utils import (
+    bind_visual_material,
+    clone,
+    create_prim,
+    get_current_stage,
+    select_usd_variants,
+)
 
 if TYPE_CHECKING:
     from . import from_files_cfg
@@ -104,7 +110,9 @@ def _spawn_from_usd_file(
             scale=cfg.scale,
         )
     else:
-        logging.getLogger(__name__).warning(f"A prim already exists at prim path: '{prim_path}'.")
+        logging.getLogger(__name__).warning(
+            f"A prim already exists at prim path: '{prim_path}'."
+        )
 
     # modify variants
     if hasattr(cfg, "variants") and cfg.variants is not None:
@@ -145,7 +153,9 @@ def _spawn_from_usd_file(
         # create material
         cfg.visual_material.func(material_path, cfg.visual_material)
         # apply material
-        bind_visual_material(prim_path + "/base/visuals/soccer_agent_circle", material_path)
+        bind_visual_material(
+            prim_path + "/base/visuals/soccer_agent_circle", material_path
+        )
 
     # return the prim
     return stage.GetPrimAtPath(prim_path)

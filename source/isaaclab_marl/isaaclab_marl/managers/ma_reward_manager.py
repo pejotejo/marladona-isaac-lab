@@ -34,21 +34,36 @@ class MultiAgentRewardManager(RewardManager):
 
         # Overwrite and reinitialize the following members.
         self._episode_sum_buf = torch.zeros(
-            self.num_envs * self.num_agents_per_env, len(self._term_names), device=self.device
+            self.num_envs * self.num_agents_per_env,
+            len(self._term_names),
+            device=self.device,
         )
-        self._episode_sums = {name: self._episode_sum_buf[:, i] for i, name in enumerate(self._term_names)}
+        self._episode_sums = {
+            name: self._episode_sum_buf[:, i] for i, name in enumerate(self._term_names)
+        }
         # create buffer for managing reward per environment
-        self._reward_buf = torch.zeros(self.num_envs * self.num_agents_per_env, dtype=torch.float, device=self.device)
+        self._reward_buf = torch.zeros(
+            self.num_envs * self.num_agents_per_env,
+            dtype=torch.float,
+            device=self.device,
+        )
 
         # Buffer which stores the current step reward for each term for each environment
         self._step_reward = torch.zeros(
-            (self.num_envs * self.num_agents_per_env, len(self._term_names)), dtype=torch.float, device=self.device
+            (self.num_envs * self.num_agents_per_env, len(self._term_names)),
+            dtype=torch.float,
+            device=self.device,
         )
 
     def compute(self, dt):
         for name, term_cfg in zip(self._term_names, self._term_cfgs):
-            if hasattr(term_cfg, "decay_condition_type") and hasattr(term_cfg, "decay_threshhold"):
-                if term_cfg.decay_threshhold < self.performance_metrics["average_score"]:
+            if hasattr(term_cfg, "decay_condition_type") and hasattr(
+                term_cfg, "decay_threshhold"
+            ):
+                if (
+                    term_cfg.decay_threshhold
+                    < self.performance_metrics["average_score"]
+                ):
                     term_cfg.weight = 0
         return super().compute(dt)
 

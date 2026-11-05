@@ -93,7 +93,9 @@ class PPO:
         # Compute the actions and values
         self.transition.actions = self.actor_critic.act(obs).detach()
         self.transition.values = self.actor_critic.evaluate(critic_obs).detach()
-        self.transition.actions_log_prob = self.actor_critic.get_actions_log_prob(self.transition.actions).detach()
+        self.transition.actions_log_prob = self.actor_critic.get_actions_log_prob(
+            self.transition.actions
+        ).detach()
 
         self.transition.action_mean = self.actor_critic.action_mean.detach()
         self.transition.action_sigma = self.actor_critic.action_std.detach()
@@ -101,8 +103,12 @@ class PPO:
             self.transition.action_alpha = self.actor_critic.action_alpha.detach()
             self.transition.action_beta = self.actor_critic.action_beta.detach()
         else:
-            self.transition.action_alpha = torch.zeros_like(self.actor_critic.action_mean.detach())
-            self.transition.action_beta = torch.zeros_like(self.actor_critic.action_mean.detach())
+            self.transition.action_alpha = torch.zeros_like(
+                self.actor_critic.action_mean.detach()
+            )
+            self.transition.action_beta = torch.zeros_like(
+                self.actor_critic.action_mean.detach()
+            )
 
         # need to record obs and critic_obs before env.step()
         self.transition.observations = obs
@@ -118,7 +124,9 @@ class PPO:
         # Bootstrapping on time outs
         if "time_outs" in infos:
             self.transition.rewards += self.gamma * torch.squeeze(
-                self.transition.values * infos["time_outs"].unsqueeze(1).to(self.device), 1
+                self.transition.values
+                * infos["time_outs"].unsqueeze(1).to(self.device),
+                1,
             )
 
         # Record the transition
@@ -136,9 +144,13 @@ class PPO:
         entropy_loss = 0
         mean_symmetry_loss = 0
         if self.actor_critic.is_recurrent:
-            generator = self.storage.reccurent_mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
+            generator = self.storage.reccurent_mini_batch_generator(
+                self.num_mini_batches, self.num_learning_epochs
+            )
         else:
-            generator = self.storage.mini_batch_generator(self.num_mini_batches, self.num_learning_epochs)
+            generator = self.storage.mini_batch_generator(
+                self.num_mini_batches, self.num_learning_epochs
+            )
         for (
             obs_batch,
             critic_obs_batch,
@@ -158,22 +170,36 @@ class PPO:
             # original batch size
             original_batch_size = obs_batch.shape[0]
 
-            if self.symmetry_cfg["use_augmentation"] and self.symmetry_cfg["use_symmetry"]:
+            if (
+                self.symmetry_cfg["use_augmentation"]
+                and self.symmetry_cfg["use_symmetry"]
+            ):
                 obs_batch = obs_batch.repeat(num_aug, 1)
                 obs_batch[original_batch_size:, self.obs_mirror_index] *= -1
                 critic_obs_batch = critic_obs_batch.repeat(num_aug, 1)
                 critic_obs_batch[original_batch_size:, self.obs_mirror_index] *= -1
                 actions_batch = actions_batch.repeat(num_aug, 1)
-                actions_batch[original_batch_size:, self.action_mirror_index] = torch.clip(
-                    1.0 - actions_batch[original_batch_size:, self.action_mirror_index], 0.000001, 0.999999
+                actions_batch[original_batch_size:, self.action_mirror_index] = (
+                    torch.clip(
+                        1.0
+                        - actions_batch[original_batch_size:, self.action_mirror_index],
+                        0.000001,
+                        0.999999,
+                    )
                 )
-                old_actions_log_prob_batch = old_actions_log_prob_batch.repeat(num_aug, 1)
+                old_actions_log_prob_batch = old_actions_log_prob_batch.repeat(
+                    num_aug, 1
+                )
                 target_values_batch = target_values_batch.repeat(num_aug, 1)
                 advantages_batch = advantages_batch.repeat(num_aug, 1)
                 returns_batch = returns_batch.repeat(num_aug, 1)
 
-            self.actor_critic.act(obs_batch, masks=masks_batch, hidden_states=hid_states_batch[0])
-            actions_log_prob_batch = self.actor_critic.get_actions_log_prob(actions_batch)
+            self.actor_critic.act(
+                obs_batch, masks=masks_batch, hidden_states=hid_states_batch[0]
+            )
+            actions_log_prob_batch = self.actor_critic.get_actions_log_prob(
+                actions_batch
+            )
             value_batch = self.actor_critic.evaluate(
                 critic_obs_batch, masks=masks_batch, hidden_states=hid_states_batch[1]
             )
@@ -187,15 +213,22 @@ class PPO:
             # KL
             if self.desired_kl is not None and self.schedule == "adaptive":
                 with torch.inference_mode():
-                    if isinstance(self.actor_critic.distribution, torch.distributions.Normal):
+                    if isinstance(
+                        self.actor_critic.distribution, torch.distributions.Normal
+                    ):
                         kl = torch.sum(
                             torch.log(sigma_batch / old_sigma_batch + 1.0e-5)
-                            + (torch.square(old_sigma_batch) + torch.square(old_mu_batch - mu_batch))
+                            + (
+                                torch.square(old_sigma_batch)
+                                + torch.square(old_mu_batch - mu_batch)
+                            )
                             / (2.0 * torch.square(sigma_batch))
                             - 0.5,
                             axis=-1,
                         )
-                    elif isinstance(self.actor_critic.distribution, torch.distributions.Beta):
+                    elif isinstance(
+                        self.actor_critic.distribution, torch.distributions.Beta
+                    ):
                         kl = torch.sum(
                             torch.lgamma(old_alpha_batch + old_beta_batch)
                             + torch.lgamma(alpha_batch)
@@ -206,17 +239,23 @@ class PPO:
                             + (old_alpha_batch - alpha_batch)
                             * (
                                 torch.special.digamma(old_alpha_batch)
-                                - torch.special.digamma(old_alpha_batch + old_beta_batch)
+                                - torch.special.digamma(
+                                    old_alpha_batch + old_beta_batch
+                                )
                             )
                             + (old_beta_batch - beta_batch)
                             * (
                                 torch.special.digamma(old_beta_batch)
-                                - torch.special.digamma(old_alpha_batch + old_beta_batch)
+                                - torch.special.digamma(
+                                    old_alpha_batch + old_beta_batch
+                                )
                             ),
                             axis=-1,
                         )
                     else:
-                        raise NotImplementedError("KL divergence not implemented for this distribution")
+                        raise NotImplementedError(
+                            "KL divergence not implemented for this distribution"
+                        )
                     kl_mean = torch.mean(kl)
 
                     if kl_mean > self.desired_kl * 2.0:
@@ -228,7 +267,9 @@ class PPO:
                         param_group["lr"] = self.learning_rate
 
             # Surrogate loss
-            ratio = torch.exp(actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch))
+            ratio = torch.exp(
+                actions_log_prob_batch - torch.squeeze(old_actions_log_prob_batch)
+            )
             surrogate = -torch.squeeze(advantages_batch) * ratio
             surrogate_clipped = -torch.squeeze(advantages_batch) * torch.clamp(
                 ratio, 1.0 - self.clip_param, 1.0 + self.clip_param
@@ -237,16 +278,20 @@ class PPO:
 
             # Value function loss
             if self.use_clipped_value_loss:
-                value_clipped = target_values_batch + (value_batch - target_values_batch).clamp(
-                    -self.clip_param, self.clip_param
-                )
+                value_clipped = target_values_batch + (
+                    value_batch - target_values_batch
+                ).clamp(-self.clip_param, self.clip_param)
                 value_losses = (value_batch - returns_batch).pow(2)
                 value_losses_clipped = (value_clipped - returns_batch).pow(2)
                 value_loss = torch.max(value_losses, value_losses_clipped).mean()
             else:
                 value_loss = (returns_batch - value_batch).pow(2).mean()
 
-            loss = surrogate_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy_batch.mean()
+            loss = (
+                surrogate_loss
+                + self.value_loss_coef * value_loss
+                - self.entropy_coef * entropy_batch.mean()
+            )
 
             # Gradient step
             self.optimizer.zero_grad()

@@ -53,23 +53,35 @@ class Agents(EnvCoreData):
     def init_tensors(self):
         # Agent base shaped tensors (N, 2, N_T,)
         # pose: base shape + (x, y, rot_z)
-        self.base_pose_w = torch.zeros(self.agent_pose_shape, device=self.device, dtype=torch.float32)
+        self.base_pose_w = torch.zeros(
+            self.agent_pose_shape, device=self.device, dtype=torch.float32
+        )
         self.base_default_pose_w = torch.zeros_like(self.base_pose_w)
 
-        self.constraint_state_indexes = torch.tensor([2, 3, 4, 9, 10, 11], device=self.device)
-        self.constraint_state_values = torch.tensor([0.08, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        self.constraint_state_indexes = torch.tensor(
+            [2, 3, 4, 9, 10, 11], device=self.device
+        )
+        self.constraint_state_values = torch.tensor(
+            [0.08, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device
+        )
 
-        self.ball_pos_b = torch.zeros(self.agent_pos_shape, device=self.device, dtype=torch.float32)
+        self.ball_pos_b = torch.zeros(
+            self.agent_pos_shape, device=self.device, dtype=torch.float32
+        )
         # Team base shaped tensors (N, 2 * N_T,)
         self.base_lin_vel_b = self.asset.data.body_com_lin_vel_b.torch[..., :2]
         self.base_lin_vel_w = self.asset.data.body_com_lin_vel_w.torch[..., :2]
         self.base_ang_vel_w = self.asset.data.body_com_ang_vel_w.torch[..., 2]
 
         # Agent2agent base shaped tensors (N, 2, N_T, N_T,)
-        self.closest_teammate_indexes = torch.zeros(self.agent2agent_base_shape, device=self.device, dtype=torch.int32)
+        self.closest_teammate_indexes = torch.zeros(
+            self.agent2agent_base_shape, device=self.device, dtype=torch.int32
+        )
         self.closest_opponent_indexes = torch.zeros_like(self.closest_teammate_indexes)
 
-        self.closest_teammate_pose_w = torch.zeros(self.agent2agent_pose_shape, device=self.device, dtype=torch.float32)
+        self.closest_teammate_pose_w = torch.zeros(
+            self.agent2agent_pose_shape, device=self.device, dtype=torch.float32
+        )
         self.closest_opponent_pose_w = torch.zeros_like(self.closest_teammate_pose_w)
 
     def set_agents_default_pos(self, blue_default_pose, red_default_pose):
@@ -80,7 +92,9 @@ class Agents(EnvCoreData):
         agents_state = self.asset.data.body_state_w.torch
         agents_state[..., self.constraint_state_indexes] = self.constraint_state_values
         self.asset.write_body_pose_to_sim_index(body_poses=agents_state[..., :7])
-        self.asset.write_body_com_velocity_to_sim_index(body_velocities=agents_state[..., 7:])
+        self.asset.write_body_com_velocity_to_sim_index(
+            body_velocities=agents_state[..., 7:]
+        )
 
         self.base_pose_w[..., :2] = (
             agents_state[..., :2].view(self.agent_pos_shape)
@@ -101,8 +115,13 @@ class Agents(EnvCoreData):
             env_ids = slice(None)
         root_states = self.asset.data.default_body_state.torch[env_ids].clone()
         num_reset_env = root_states.shape[0]
-        base_default_pose = self.base_default_pose_w.reshape(self.team_flatten_pose_shape)[env_ids].clone()
-        base_default_pose[..., 0] *= self.expand_to_env(self.env_data.field_length, flatten_type="team")[env_ids] / 2
+        base_default_pose = self.base_default_pose_w.reshape(
+            self.team_flatten_pose_shape
+        )[env_ids].clone()
+        base_default_pose[..., 0] *= (
+            self.expand_to_env(self.env_data.field_length, flatten_type="team")[env_ids]
+            / 2
+        )
         base_default_pose[..., 1] *= self.env_data.field_width / 2
         base_default_pose[..., 2] += torch.pi
         # poses
@@ -113,13 +132,20 @@ class Agents(EnvCoreData):
             inactive_base_default_pose[..., 2] = torch.pi / 2
             inactive_base_default_pose[..., 1] = -2.7
             inactive_base_default_pose[..., 0] = (
-                torch.cat([torch.arange(self.num_agents_per_team) * 0.5, -torch.arange(self.num_agents_per_team) * 0.5])
+                torch.cat(
+                    [
+                        torch.arange(self.num_agents_per_team) * 0.5,
+                        -torch.arange(self.num_agents_per_team) * 0.5,
+                    ]
+                )
                 .unsqueeze(0)
                 .repeat(num_reset_env, 1)
             )
             base_default_pose[inactive] = inactive_base_default_pose[inactive]
 
-        positions = self.expand_vector_to_env(self.env_data.env_origins, flatten_type="team")[env_ids].clone()
+        positions = self.expand_vector_to_env(
+            self.env_data.env_origins, flatten_type="team"
+        )[env_ids].clone()
         positions[..., :2] += base_default_pose[..., :2]
         orientations = math_utils.quat_from_euler_xyz(
             torch.zeros_like(base_default_pose[..., 2]),
@@ -128,10 +154,14 @@ class Agents(EnvCoreData):
         )
 
         # set into the physics simulation
-        self.asset.write_body_pose_to_sim_index(body_poses=torch.cat([positions, orientations], dim=-1), env_ids=env_ids)
+        self.asset.write_body_pose_to_sim_index(
+            body_poses=torch.cat([positions, orientations], dim=-1), env_ids=env_ids
+        )
         velocity = root_states[..., 7:]
         velocity[...] = 0
-        self.asset.write_body_com_velocity_to_sim_index(body_velocities=velocity, env_ids=env_ids)
+        self.asset.write_body_com_velocity_to_sim_index(
+            body_velocities=velocity, env_ids=env_ids
+        )
 
     def compute_ego_ball_state(self, ball_pos_w):
         self.ball_pos_b = transform2dPos(
@@ -151,23 +181,33 @@ class Agents(EnvCoreData):
         self.agent2agent_distance.nan_to_num_(nan=float("inf"))
 
         self.closest_teammate_indexes[:, 0, ...] = torch.argsort(
-            self.agent2agent_distance[:, : self.num_agents_per_team, : self.num_agents_per_team],
+            self.agent2agent_distance[
+                :, : self.num_agents_per_team, : self.num_agents_per_team
+            ],
             dim=-1,
         )
         self.closest_teammate_indexes[:, 1, ...] = torch.argsort(
-            self.agent2agent_distance[:, self.num_agents_per_team :, self.num_agents_per_team :],
+            self.agent2agent_distance[
+                :, self.num_agents_per_team :, self.num_agents_per_team :
+            ],
             dim=-1,
         )
         self.closest_opponent_indexes[:, 0, ...] = torch.argsort(
-            self.agent2agent_distance[:, : self.num_agents_per_team, self.num_agents_per_team :],
+            self.agent2agent_distance[
+                :, : self.num_agents_per_team, self.num_agents_per_team :
+            ],
             dim=-1,
         )
         self.closest_opponent_indexes[:, 1, ...] = torch.argsort(
-            self.agent2agent_distance[:, self.num_agents_per_team :, : self.num_agents_per_team],
+            self.agent2agent_distance[
+                :, self.num_agents_per_team :, : self.num_agents_per_team
+            ],
             dim=-1,
         )
 
-        teammate_pose_w = augmented_base_pose_w.unsqueeze(-3).expand(self.agent2agent_pose_shape)
+        teammate_pose_w = augmented_base_pose_w.unsqueeze(-3).expand(
+            self.agent2agent_pose_shape
+        )
         opponent_pose_w = torch.zeros_like(teammate_pose_w)
         opponent_pose_w[:, 0, ...] = teammate_pose_w[:, 1, ...]
         opponent_pose_w[:, 1, ...] = teammate_pose_w[:, 0, ...]
@@ -175,13 +215,19 @@ class Agents(EnvCoreData):
         self.closest_teammate_pose_w = teammate_pose_w[
             torch.arange(self.num_envs).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1),
             torch.arange(self.num_teams).unsqueeze(0).unsqueeze(-1).unsqueeze(-1),
-            torch.arange(self.num_agents_per_team).unsqueeze(0).unsqueeze(0).unsqueeze(-1),
+            torch.arange(self.num_agents_per_team)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .unsqueeze(-1),
             self.closest_teammate_indexes,
         ]
         self.closest_opponent_pose_w = opponent_pose_w[
             torch.arange(self.num_envs).unsqueeze(-1).unsqueeze(-1).unsqueeze(-1),
             torch.arange(self.num_teams).unsqueeze(0).unsqueeze(-1).unsqueeze(-1),
-            torch.arange(self.num_agents_per_team).unsqueeze(0).unsqueeze(0).unsqueeze(-1),
+            torch.arange(self.num_agents_per_team)
+            .unsqueeze(0)
+            .unsqueeze(0)
+            .unsqueeze(-1),
             self.closest_opponent_indexes,
         ]
 

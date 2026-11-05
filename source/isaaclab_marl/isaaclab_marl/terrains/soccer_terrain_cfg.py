@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from isaaclab.terrains.terrain_generator_cfg import SubTerrainBaseCfg, TerrainGeneratorCfg
+from isaaclab.terrains.terrain_generator_cfg import (
+    SubTerrainBaseCfg,
+    TerrainGeneratorCfg,
+)
 from isaaclab.utils import configclass
 
 from isaaclab_marl.config import FIELD_LEVEL_SETTINGS

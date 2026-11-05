@@ -48,7 +48,6 @@ class MultiAgentAction:
 
 
 class BaseMovementAction(ActionTerm, MultiAgentAction):
-
     cfg: ActionTermCfg
     """The configuration of the action term."""
     _asset: Articulation
@@ -70,14 +69,20 @@ class BaseMovementAction(ActionTerm, MultiAgentAction):
         self.agents = env.agents
         self.agent_cfg = env.agents.agent_cfg
         # # create tensors for raw and processed actions
-        self._raw_actions = torch.zeros(self.num_envs, self.num_agents_per_env, self.action_dim, device=self.device)
+        self._raw_actions = torch.zeros(
+            self.num_envs, self.num_agents_per_env, self.action_dim, device=self.device
+        )
         self._processed_actions = torch.zeros_like(self.raw_actions)
 
         self.target_velocity_cmd = torch.zeros_like(self._processed_actions[..., :3])
         # self.target_force_cmd = torch.zeros_like(self.target_velocity_cmd)
 
-        self._force = torch.zeros(self.num_envs, self.num_agents_per_env, 3, device=self.device)
-        self._torque = torch.zeros(self.num_envs, self.num_agents_per_env, 3, device=self.device)
+        self._force = torch.zeros(
+            self.num_envs, self.num_agents_per_env, 3, device=self.device
+        )
+        self._torque = torch.zeros(
+            self.num_envs, self.num_agents_per_env, 3, device=self.device
+        )
 
         self._scale = 1.0
         self._offset = 0.0
@@ -124,23 +129,35 @@ class BaseMovementAction(ActionTerm, MultiAgentAction):
         original_target_vel = torch.clip(actions[..., :2], -1, 1)
         target_vel = original_target_vel.clone()
 
-        target_vel[..., 0] = original_target_vel[..., 0] * torch.sqrt(1 - original_target_vel[..., 1] ** 2 / 2)
-        target_vel[..., 1] = original_target_vel[..., 1] * torch.sqrt(1 - original_target_vel[..., 0] ** 2 / 2)
+        target_vel[..., 0] = original_target_vel[..., 0] * torch.sqrt(
+            1 - original_target_vel[..., 1] ** 2 / 2
+        )
+        target_vel[..., 1] = original_target_vel[..., 1] * torch.sqrt(
+            1 - original_target_vel[..., 0] ** 2 / 2
+        )
 
         target_rot_vel = torch.clip(actions[..., 2], -1, 1)
 
         speed_limit = self.agent_cfg.cmd_speed_limit
 
-        target_vel[..., 0][target_vel[..., 0] > 0] = target_vel[..., 0][target_vel[..., 0] > 0] * speed_limit[0][0]
-        target_vel[..., 0][target_vel[..., 0] < 0] = target_vel[..., 0][target_vel[..., 0] < 0] * (-speed_limit[0][1])
+        target_vel[..., 0][target_vel[..., 0] > 0] = (
+            target_vel[..., 0][target_vel[..., 0] > 0] * speed_limit[0][0]
+        )
+        target_vel[..., 0][target_vel[..., 0] < 0] = target_vel[..., 0][
+            target_vel[..., 0] < 0
+        ] * (-speed_limit[0][1])
         target_vel[..., 1] = target_vel[..., 1] * speed_limit[1][0]
         target_rot_vel = target_rot_vel * speed_limit[2][0]
 
         self.target_velocity_cmd[..., :2] = target_vel
         self.target_velocity_cmd[..., 2] = target_rot_vel
 
-        self._force[..., :2] = (target_vel - self.agents.base_lin_vel_b) * self.agent_cfg.translation_force_d_gain
-        self._torque[..., 2] = (target_rot_vel - self.agents.base_ang_vel_w) * self.agent_cfg.rotation_torque_d_gain
+        self._force[..., :2] = (
+            target_vel - self.agents.base_lin_vel_b
+        ) * self.agent_cfg.translation_force_d_gain
+        self._torque[..., 2] = (
+            target_rot_vel - self.agents.base_ang_vel_w
+        ) * self.agent_cfg.rotation_torque_d_gain
 
         inactive_agents = self._env.env_data.inactive.view(self.num_envs, -1)
         self._force[inactive_agents] = 0
@@ -167,7 +184,9 @@ class BallControlAction(ActionTerm, MultiAgentAction):
         self.agents = env.agents
         self.ball_cfg = env.ball.ball_cfg
         # # create tensors for raw and processed actions
-        self._raw_actions = torch.zeros(self.num_envs, self.num_agents_per_env, self.action_dim, device=self.device)
+        self._raw_actions = torch.zeros(
+            self.num_envs, self.num_agents_per_env, self.action_dim, device=self.device
+        )
         self._processed_actions = torch.zeros_like(self.raw_actions)
         self._scale = 1.0
         self._offset = 0.0
@@ -222,13 +241,19 @@ class BallControlAction(ActionTerm, MultiAgentAction):
             return self._env.env_data.expand_to_env(env_base_tensor, flatten_type="env")
 
         def expand_vector(env_base_tensor):
-            return self._env.env_data.expand_vector_to_env(env_base_tensor, flatten_type="env")
+            return self._env.env_data.expand_vector_to_env(
+                env_base_tensor, flatten_type="env"
+            )
 
         actions = self._processed_actions
         offset = 0.01
         target_velocity_cmd_b = torch.zeros_like(actions)
-        target_velocity_cmd_b[..., 0] = actions[..., 0] * torch.sqrt(1 - actions[..., 1] ** 2 / 2)
-        target_velocity_cmd_b[..., 1] = actions[..., 1] * torch.sqrt(1 - actions[..., 0] ** 2 / 2)
+        target_velocity_cmd_b[..., 0] = actions[..., 0] * torch.sqrt(
+            1 - actions[..., 1] ** 2 / 2
+        )
+        target_velocity_cmd_b[..., 1] = actions[..., 1] * torch.sqrt(
+            1 - actions[..., 0] ** 2 / 2
+        )
         target_velocity_cmd_b[..., 0] += offset
         target_velocity_cmd_b[..., 0] /= 2
 
@@ -241,7 +266,10 @@ class BallControlAction(ActionTerm, MultiAgentAction):
         ball_pos_b = self.agents.ball_pos_b
         ball_controllable = torch.logical_and(
             torch.logical_and(
-                torch.logical_and(ball_pos_b.norm(dim=-1) < self.ball_cfg.kick_margin, ball_pos_b[:, 0] > 0),
+                torch.logical_and(
+                    ball_pos_b.norm(dim=-1) < self.ball_cfg.kick_margin,
+                    ball_pos_b[:, 0] > 0,
+                ),
                 torch.abs(ball_pos_b[:, 1]) < 0.1,
             ),
             expand(self._asset.data.root_pos_w.torch[:, 2]) < 0.08,
@@ -262,13 +290,21 @@ class BallControlAction(ActionTerm, MultiAgentAction):
         ball_controllable[inactive_agent] = False
 
         # total_target_cmd_w = torch.mean(target_velocity_cmd_w.view(self.env_data.team_flatten_pose_shape), dim=1)
-        self.total_target_cmd_w[:, :2] = torch.sum(target_force_cmd_w.view(self.env_data.team_flatten_pos_shape), dim=1)
+        self.total_target_cmd_w[:, :2] = torch.sum(
+            target_force_cmd_w.view(self.env_data.team_flatten_pos_shape), dim=1
+        )
 
-        ball_state_modifyable = torch.any(ball_controllable.view(self.env_data.team_flatten_base_shape), dim=1)
-        self._force[:] = quat_apply_inverse(self._asset.data.root_quat_w.torch, self.total_target_cmd_w)
+        ball_state_modifyable = torch.any(
+            ball_controllable.view(self.env_data.team_flatten_base_shape), dim=1
+        )
+        self._force[:] = quat_apply_inverse(
+            self._asset.data.root_quat_w.torch, self.total_target_cmd_w
+        )
 
         # passive physic: from environment friction
-        self._torque[:] = -self._asset.data.root_ang_vel_b.torch * self.ball.rolling_friction
+        self._torque[:] = (
+            -self._asset.data.root_ang_vel_b.torch * self.ball.rolling_friction
+        )
 
 
 class MultiAgentActionManager(ManagerBase, MultiAgentAction):
@@ -284,12 +320,17 @@ class MultiAgentActionManager(ManagerBase, MultiAgentAction):
         """
         # check if config is None
         if cfg is None:
-            raise ValueError("Action manager configuration is None. Please provide a valid configuration.")
+            raise ValueError(
+                "Action manager configuration is None. Please provide a valid configuration."
+            )
 
         # call the base class constructor (this prepares the terms)
         super().__init__(cfg, env)
         # create buffers to store actions
-        self._action = torch.zeros((self.num_envs * self.num_agents_per_env, self.total_action_dim), device=self.device)
+        self._action = torch.zeros(
+            (self.num_envs * self.num_agents_per_env, self.total_action_dim),
+            device=self.device,
+        )
         self._prev_action = torch.zeros_like(self._action)
 
         # check if any term has debug visualization implemented
@@ -359,7 +400,9 @@ class MultiAgentActionManager(ManagerBase, MultiAgentAction):
     Operations.
     """
 
-    def get_active_iterable_terms(self, env_idx: int) -> Sequence[tuple[str, Sequence[float]]]:
+    def get_active_iterable_terms(
+        self, env_idx: int
+    ) -> Sequence[tuple[str, Sequence[float]]]:
         """Returns the active terms as iterable sequence of tuples.
 
         The first element of the tuple is the name of the term and the second element is the raw value(s) of the term.
@@ -422,7 +465,9 @@ class MultiAgentActionManager(ManagerBase, MultiAgentAction):
         """
         # check if action dimension is valid
         if self.total_action_dim != action.shape[1]:
-            raise ValueError(f"Invalid action shape, expected: {self.total_action_dim}, received: {action.shape[1]}.")
+            raise ValueError(
+                f"Invalid action shape, expected: {self.total_action_dim}, received: {action.shape[1]}."
+            )
         # store the input actions
         self._prev_action[:] = self._action
         self._action[:] = action.to(self.device)
@@ -483,7 +528,9 @@ class MultiAgentActionManager(ManagerBase, MultiAgentAction):
             term = term_cfg.class_type(term_cfg, self._env)
             # sanity check if term is valid type
             if not isinstance(term, ActionTerm):
-                raise TypeError(f"Returned object for the term '{term_name}' is not of type ActionType.")
+                raise TypeError(
+                    f"Returned object for the term '{term_name}' is not of type ActionType."
+                )
             # add term name and parameters
             self._term_names.append(term_name)
             self._terms[term_name] = term

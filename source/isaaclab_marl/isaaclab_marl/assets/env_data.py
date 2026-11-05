@@ -318,7 +318,6 @@ class EnvData(EnvCoreData):
 
         self.agent_control_type[:] = self.agent_ids_control
 
-
         self.regenerate_level_config(self.is_training_env)
         self.active_agent_per_team[self.is_eval_env] = torch.randint(
             low=self.cfg.num_agents_range[0],

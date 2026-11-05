@@ -44,8 +44,16 @@ import isaaclab_marl.tasks.soccer.mdp.terminations as T
 from isaaclab_marl.assets.agent_cfg import AgentCfg, AgentTeamCfg
 from isaaclab_marl.assets.env_data import SoccerGameCfg
 from isaaclab_marl.assets.soccer_ball_cfg import BallCfg
-from isaaclab_marl.config import FIELD_LEVEL_SETTINGS, GOAL_LEVEL_SETTINGS, MARL_ROOT_DIR, WORLD_POS_NORMALIZATION
-from isaaclab_marl.managers.ma_action_manager import BallControlAction, BaseMovementAction
+from isaaclab_marl.config import (
+    FIELD_LEVEL_SETTINGS,
+    GOAL_LEVEL_SETTINGS,
+    MARL_ROOT_DIR,
+    WORLD_POS_NORMALIZATION,
+)
+from isaaclab_marl.managers.ma_action_manager import (
+    BallControlAction,
+    BaseMovementAction,
+)
 
 from isaaclab_marl.terrains import TerrainCfg  # isort: skip
 
@@ -55,7 +63,9 @@ class MySceneCfg(InteractiveSceneCfg):
     """Configuration for the terrain scene with a legged robot."""
 
     # ground terrain
-    ground = AssetBaseCfg(prim_path="/World/defaultGroundPlane", spawn=sim_utils.GroundPlaneCfg())
+    ground = AssetBaseCfg(
+        prim_path="/World/defaultGroundPlane", spawn=sim_utils.GroundPlaneCfg()
+    )
 
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
@@ -87,8 +97,12 @@ class MySceneCfg(InteractiveSceneCfg):
 
     def __post_init__(self):
         self.ground.spawn.size = (
-            self.terrain.terrain_generator.size[0] * self.terrain.terrain_generator.num_rows + 5,
-            self.terrain.terrain_generator.size[1] * self.terrain.terrain_generator.num_cols + 5,
+            self.terrain.terrain_generator.size[0]
+            * self.terrain.terrain_generator.num_rows
+            + 5,
+            self.terrain.terrain_generator.size[1]
+            * self.terrain.terrain_generator.num_cols
+            + 5,
         )
         self.ground.init_state.pos = (
             -self.terrain.terrain_generator.size[0] / 2,
@@ -97,10 +111,16 @@ class MySceneCfg(InteractiveSceneCfg):
         )
 
     def create_soccer_field_visual(self):
-        level_settings = self.terrain.terrain_generator.sub_terrains["soccer_field"].level_settings
+        level_settings = self.terrain.terrain_generator.sub_terrains[
+            "soccer_field"
+        ].level_settings
         for i in range(self.terrain.terrain_generator.num_rows):
-            goal_scaler = GOAL_LEVEL_SETTINGS[level_settings[i][1]] / GOAL_LEVEL_SETTINGS[-1]
-            field_scaler = FIELD_LEVEL_SETTINGS[level_settings[i][0]] / FIELD_LEVEL_SETTINGS[-1]
+            goal_scaler = (
+                GOAL_LEVEL_SETTINGS[level_settings[i][1]] / GOAL_LEVEL_SETTINGS[-1]
+            )
+            field_scaler = (
+                FIELD_LEVEL_SETTINGS[level_settings[i][0]] / FIELD_LEVEL_SETTINGS[-1]
+            )
             for j in range(self.terrain.terrain_generator.num_cols):
                 sub_terrain_origin_x = self.terrain.terrain_generator.size[0] * (
                     -self.terrain.terrain_generator.num_rows / 2 + i
@@ -113,7 +133,9 @@ class MySceneCfg(InteractiveSceneCfg):
                     f"soccer_field_{i}_{j}",
                     AssetBaseCfg(
                         prim_path=f"/Visuals/SoccerFieldVisuals/soccer_field_{i}_{j}",
-                        init_state=AssetBaseCfg.InitialStateCfg(pos=(sub_terrain_origin_x, sub_terrain_origin_y, 0.0)),
+                        init_state=AssetBaseCfg.InitialStateCfg(
+                            pos=(sub_terrain_origin_x, sub_terrain_origin_y, 0.0)
+                        ),
                         spawn=sim_utils.UsdFileCfg(
                             usd_path=MARL_ROOT_DIR + "/assets/field/field.usd",
                             scale=(0.6 * field_scaler, 0.6, 1.0),
@@ -121,20 +143,29 @@ class MySceneCfg(InteractiveSceneCfg):
                     ),
                 )
 
-                goal_red_x = sub_terrain_origin_x - FIELD_LEVEL_SETTINGS[level_settings[i][0]] / 2
-                goal_blue_x = sub_terrain_origin_x + FIELD_LEVEL_SETTINGS[level_settings[i][0]] / 2
+                goal_red_x = (
+                    sub_terrain_origin_x
+                    - FIELD_LEVEL_SETTINGS[level_settings[i][0]] / 2
+                )
+                goal_blue_x = (
+                    sub_terrain_origin_x
+                    + FIELD_LEVEL_SETTINGS[level_settings[i][0]] / 2
+                )
                 setattr(
                     self,
                     f"goal_red_{i}_{j}",
                     AssetBaseCfg(
                         prim_path=f"/Visuals/SoccerFieldVisuals/goal_red_{i}_{j}",
                         init_state=AssetBaseCfg.InitialStateCfg(
-                            pos=(goal_red_x, sub_terrain_origin_y, 0.0), rot=(0.0, 0.0, 1.0, 0.0)
+                            pos=(goal_red_x, sub_terrain_origin_y, 0.0),
+                            rot=(0.0, 0.0, 1.0, 0.0),
                         ),
                         spawn=sim_utils.UsdFileCfg(
                             usd_path=MARL_ROOT_DIR + "/assets/goal/goal.usd",
                             scale=(0.6, float(0.6 * goal_scaler), 1.0),
-                            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)),
+                            visual_material=sim_utils.PreviewSurfaceCfg(
+                                diffuse_color=(1.0, 0.0, 0.0)
+                            ),
                         ),
                     ),
                 )
@@ -144,11 +175,15 @@ class MySceneCfg(InteractiveSceneCfg):
                     f"goal_blue_{i}_{j}",
                     AssetBaseCfg(
                         prim_path=f"/Visuals/SoccerFieldVisuals/goal_blue_{i}_{j}",
-                        init_state=AssetBaseCfg.InitialStateCfg(pos=(goal_blue_x, sub_terrain_origin_y, 0.0)),
+                        init_state=AssetBaseCfg.InitialStateCfg(
+                            pos=(goal_blue_x, sub_terrain_origin_y, 0.0)
+                        ),
                         spawn=sim_utils.UsdFileCfg(
                             usd_path=MARL_ROOT_DIR + "/assets/goal/goal.usd",
                             scale=(0.6, 0.6 * goal_scaler, 1.0),
-                            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0)),
+                            visual_material=sim_utils.PreviewSurfaceCfg(
+                                diffuse_color=(0.0, 0.0, 1.0)
+                            ),
                         ),
                     ),
                 )
@@ -201,7 +236,9 @@ class ObservationsCfg:
             params={"normalize": False, "expand_rot": False},
         )
         ball_pos_b = ObsTerm(func=O.ball_pos_b)
-        ball_pos_w = ObsTerm(func=O.ball_pos_w, history_length=2, params={"normalize": False})
+        ball_pos_w = ObsTerm(
+            func=O.ball_pos_w, history_length=2, params={"normalize": False}
+        )
         closest_agent_to_ball = ObsTerm(func=O.closest_agent_to_ball)
         player_id = ObsTerm(func=O.player_id)
         field_infos = ObsTerm(func=O.field_infos, params={"normalize": False})
@@ -213,14 +250,22 @@ class ObservationsCfg:
             func=O.closest_teammate_pose,
             noise=Unoise(n_min=-0.002, n_max=0.002),
             history_length=2,
-            params={"normalize": WORLD_POS_NORMALIZATION, "expand_rot": True, "max_num_neighbor": 5},
+            params={
+                "normalize": WORLD_POS_NORMALIZATION,
+                "expand_rot": True,
+                "max_num_neighbor": 5,
+            },
         )
 
         opponent_pose = ObsTerm(
             func=O.closest_opponent_pose,
             noise=Unoise(n_min=-0.002, n_max=0.002),
             history_length=2,
-            params={"normalize": WORLD_POS_NORMALIZATION, "expand_rot": True, "max_num_neighbor": 5},
+            params={
+                "normalize": WORLD_POS_NORMALIZATION,
+                "expand_rot": True,
+                "max_num_neighbor": 5,
+            },
         )
 
     @configclass
@@ -229,15 +274,25 @@ class ObservationsCfg:
 
         concatenate_terms = True
         # observation terms (order preserved)
-        base_own_vel = ObsTerm(func=O.base_own_vel, noise=Unoise(n_min=-0.005, n_max=0.005))
+        base_own_vel = ObsTerm(
+            func=O.base_own_vel, noise=Unoise(n_min=-0.005, n_max=0.005)
+        )
         base_own_pose_w = ObsTerm(
             func=O.base_own_pose_w,
             noise=Unoise(n_min=-0.002, n_max=0.002),
             params={"normalize": True, "expand_rot": True},
         )
         ball_vel_w = ObsTerm(func=O.ball_vel_w, noise=Unoise(n_min=-0.005, n_max=0.005))
-        ball_pos_w = ObsTerm(func=O.ball_pos_w, noise=Unoise(n_min=-0.002, n_max=0.002), params={"normalize": True})
-        field_infos = ObsTerm(func=O.field_infos, noise=Unoise(n_min=-0.0, n_max=0.0), params={"normalize": True})
+        ball_pos_w = ObsTerm(
+            func=O.ball_pos_w,
+            noise=Unoise(n_min=-0.002, n_max=0.002),
+            params={"normalize": True},
+        )
+        field_infos = ObsTerm(
+            func=O.field_infos,
+            noise=Unoise(n_min=-0.0, n_max=0.0),
+            params={"normalize": True},
+        )
 
     # observation groups
     policy: PolicyCfg = PolicyCfg(enable_corruption=True)
@@ -261,7 +316,9 @@ class RewardsCfg:
     score = RewTerm(func=R.score, weight=100.0)
     ball_outside_field_penalty = RewTerm(func=R.ball_outside_field_penalty, weight=1.0)
     collision_penalty = RewTerm(
-        func=R.collision_penalty, weight=1.0, params={"collision_radius_agent": 0.2, "collision_radius_goal_post": 0.17}
+        func=R.collision_penalty,
+        weight=1.0,
+        params={"collision_radius_agent": 0.2, "collision_radius_goal_post": 0.17},
     )
 
     vel_2_ball = CustomRewTerm(
@@ -348,13 +405,19 @@ class SoccerMARLEnvCfg(ManagerBasedRLEnvCfg):
             self.scene.agents.rigid_objects[f"{i}"] = AgentCfg(
                 prim_path="{ENV_REGEX_NS}" + f"/agent_blue_{i}",
                 base_color=(0.0, 0.0, 1.0),
-                init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.4 * (i + 1), -1.0, 0.08)),
+                init_state=RigidObjectCfg.InitialStateCfg(
+                    pos=(-0.4 * (i + 1), -1.0, 0.08)
+                ),
             )
         for i in range(self.soccer_game.num_agents_per_team):
-            self.scene.agents.rigid_objects[f"{i+self.soccer_game.num_agents_per_team}"] = AgentCfg(
+            self.scene.agents.rigid_objects[
+                f"{i + self.soccer_game.num_agents_per_team}"
+            ] = AgentCfg(
                 prim_path="{ENV_REGEX_NS}" + f"/agent_red_{i}",
                 base_color=(1.0, 0.0, 0.0),
-                init_state=RigidObjectCfg.InitialStateCfg(pos=(0.4 * (i + 1), -1.0, 0.08)),
+                init_state=RigidObjectCfg.InitialStateCfg(
+                    pos=(0.4 * (i + 1), -1.0, 0.08)
+                ),
             )
 
 
@@ -370,11 +433,13 @@ class SoccerMARLEnvPlayCfg(SoccerMARLEnvCfg):
     scene = MySceneCfg(num_envs=1, env_spacing=2.5)
 
     def __post_init__(self):
-        self.scene.terrain.terrain_generator.sub_terrains["soccer_field"].level_settings = (
-            self.soccer_game.level_settings
-        )
+        self.scene.terrain.terrain_generator.sub_terrains[
+            "soccer_field"
+        ].level_settings = self.soccer_game.level_settings
         self.episode_length_s = 120
         self.scene.terrain.terrain_generator.num_cols = 1
-        self.scene.terrain.terrain_generator.num_rows = len(self.soccer_game.level_settings)
+        self.scene.terrain.terrain_generator.num_rows = len(
+            self.soccer_game.level_settings
+        )
         self.scene.__post_init__()
         super().__post_init__()

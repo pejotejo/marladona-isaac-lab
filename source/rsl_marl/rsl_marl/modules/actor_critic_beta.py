@@ -45,9 +45,15 @@ class ActorCriticBeta(nn.Module):
 
         self.num_neighbor_obs = num_neighbor_obs
 
-        self.total_num_neighbor_obs = num_neighbor_obs * (max_num_teammate + max_num_opponent)
+        self.total_num_neighbor_obs = num_neighbor_obs * (
+            max_num_teammate + max_num_opponent
+        )
         self.preprocess_net = NeighborNet(
-            num_neighbor_obs, mlp_input_dim_a, max_num_teammate, max_num_opponent, global_encoding_dim
+            num_neighbor_obs,
+            mlp_input_dim_a,
+            max_num_teammate,
+            max_num_opponent,
+            global_encoding_dim,
         )
         actor_critic_input_dim = mlp_input_dim_a + global_encoding_dim * 2
 
@@ -58,10 +64,17 @@ class ActorCriticBeta(nn.Module):
         actor_layers.append(activation)
         for layer_index in range(len(actor_hidden_dims)):
             if layer_index == len(actor_hidden_dims) - 1:
-                actor_layers.append(nn.Linear(actor_hidden_dims[layer_index], num_actions * 2))
+                actor_layers.append(
+                    nn.Linear(actor_hidden_dims[layer_index], num_actions * 2)
+                )
                 actor_layers.append(nn.Softplus(beta=1))
             else:
-                actor_layers.append(nn.Linear(actor_hidden_dims[layer_index], actor_hidden_dims[layer_index + 1]))
+                actor_layers.append(
+                    nn.Linear(
+                        actor_hidden_dims[layer_index],
+                        actor_hidden_dims[layer_index + 1],
+                    )
+                )
                 actor_layers.append(activation)
         self.actor = nn.Sequential(*actor_layers)
 
@@ -73,7 +86,12 @@ class ActorCriticBeta(nn.Module):
             if layer_index == len(critic_hidden_dims) - 1:
                 critic_layers.append(nn.Linear(critic_hidden_dims[layer_index], 1))
             else:
-                critic_layers.append(nn.Linear(critic_hidden_dims[layer_index], critic_hidden_dims[layer_index + 1]))
+                critic_layers.append(
+                    nn.Linear(
+                        critic_hidden_dims[layer_index],
+                        critic_hidden_dims[layer_index + 1],
+                    )
+                )
                 critic_layers.append(activation)
         self.critic = nn.Sequential(*critic_layers)
 
@@ -88,7 +106,9 @@ class ActorCriticBeta(nn.Module):
     def init_weights(sequential, scales):
         [
             torch.nn.init.orthogonal_(module.weight, gain=scales[idx])
-            for idx, module in enumerate(mod for mod in sequential if isinstance(mod, nn.Linear))
+            for idx, module in enumerate(
+                mod for mod in sequential if isinstance(mod, nn.Linear)
+            )
         ]
 
     def reset(self, dones=None):

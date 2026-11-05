@@ -48,9 +48,13 @@ def move_figure(f, x, y):
 
 
 class ValuePlotter:
-    def __init__(self, num_agents_per_team, num_of_players_to_visualize, plot_value_func_list):
+    def __init__(
+        self, num_agents_per_team, num_of_players_to_visualize, plot_value_func_list
+    ):
         self.num_agents_per_team = num_agents_per_team
-        self.num_players_to_visualize = min(num_of_players_to_visualize, num_agents_per_team)
+        self.num_players_to_visualize = min(
+            num_of_players_to_visualize, num_agents_per_team
+        )
 
         self.num_value_funcs = len(plot_value_func_list)
         self.plot_value_func_list = plot_value_func_list
@@ -62,11 +66,21 @@ class ValuePlotter:
         self.goal_width = 1.2 * SCALING
         self.goal_depth = 0.1
         if NORMALIZE_EVALUATOR:
-            y, x = np.meshgrid(np.linspace(-1, 1, RESOLUTION), np.linspace(-1, 1, RESOLUTION))
+            y, x = np.meshgrid(
+                np.linspace(-1, 1, RESOLUTION), np.linspace(-1, 1, RESOLUTION)
+            )
         else:
             y, x = np.meshgrid(
-                np.linspace(-(3 + self.border_offset) * SCALING, (3 + self.border_offset) * SCALING, RESOLUTION),
-                np.linspace(-(4.5 + self.border_offset) * SCALING, (4.5 + self.border_offset) * SCALING, RESOLUTION),
+                np.linspace(
+                    -(3 + self.border_offset) * SCALING,
+                    (3 + self.border_offset) * SCALING,
+                    RESOLUTION,
+                ),
+                np.linspace(
+                    -(4.5 + self.border_offset) * SCALING,
+                    (4.5 + self.border_offset) * SCALING,
+                    RESOLUTION,
+                ),
             )
         self.x = x
         self.y = y
@@ -129,13 +143,25 @@ class ValuePlotter:
                 ax.tick_params(axis="both", which="major", labelsize=20)
 
                 rot = transforms.Affine2D().rotate_deg(90) + ax.transData
-                pcolormesh = ax.pcolormesh(x, y, self.z, cmap="RdBu", vmin=0, vmax=1, transform=rot)  # inferno or RdBu
-                scatter = ax.scatter([], [], color="w", s=80, edgecolor="k", transform=rot)
-                scatterOther = ax.scatter([], [], color="k", s=500, edgecolor="w", transform=rot)
-                scatterR = ax.scatter([], [], color="r", s=150, edgecolor="w", transform=rot)
-                scatterB = ax.scatter([], [], color="b", s=150, edgecolor="w", transform=rot)
+                pcolormesh = ax.pcolormesh(
+                    x, y, self.z, cmap="RdBu", vmin=0, vmax=1, transform=rot
+                )  # inferno or RdBu
+                scatter = ax.scatter(
+                    [], [], color="w", s=80, edgecolor="k", transform=rot
+                )
+                scatterOther = ax.scatter(
+                    [], [], color="k", s=500, edgecolor="w", transform=rot
+                )
+                scatterR = ax.scatter(
+                    [], [], color="r", s=150, edgecolor="w", transform=rot
+                )
+                scatterB = ax.scatter(
+                    [], [], color="b", s=150, edgecolor="w", transform=rot
+                )
                 lineCollection = ax.add_collection(
-                    mc.LineCollection([], linewidths=3, colors="w", linestyles="solid", transform=rot)
+                    mc.LineCollection(
+                        [], linewidths=3, colors="w", linestyles="solid", transform=rot
+                    )
                 )
                 fieldcircle = ax.add_patch(
                     plt.Circle(
@@ -144,7 +170,7 @@ class ValuePlotter:
                         color="w",
                         fill=False,
                         linewidth=3,
-                        **self.default_plot_kwargs
+                        **self.default_plot_kwargs,
                     )
                 )
                 fieldLineCollection = ax.add_collection(
@@ -163,76 +189,153 @@ class ValuePlotter:
                                 (self.field_length + self.goal_depth, self.goal_width),
                             ],
                             [
-                                (-self.field_length - self.goal_depth, -self.goal_width),
+                                (
+                                    -self.field_length - self.goal_depth,
+                                    -self.goal_width,
+                                ),
                                 (-self.field_length - self.goal_depth, self.goal_width),
                             ],
                             [
                                 (-self.field_length, -self.goal_width),
-                                (-self.field_length - self.goal_depth, -self.goal_width),
+                                (
+                                    -self.field_length - self.goal_depth,
+                                    -self.goal_width,
+                                ),
                             ],
                             [
                                 (-self.field_length, self.goal_width),
                                 (-self.field_length - self.goal_depth, self.goal_width),
                             ],
-                            [(self.field_length, -self.field_width), (self.field_length, self.field_width)],
-                            [(0, -self.field_width), (0, self.field_width)],
-                            [(-self.field_length, -self.field_width), (-self.field_length, self.field_width)],
-                            [(self.field_length, self.field_width), (-self.field_length, self.field_width)],
-                            [(self.field_length, -self.field_width), (-self.field_length, -self.field_width)],
                             [
-                                (self.field_length * GOAL_SCALE_X, -self.field_width * GOAL_SCALE_Y),
-                                (self.field_length * GOAL_SCALE_X, self.field_width * GOAL_SCALE_Y),
+                                (self.field_length, -self.field_width),
+                                (self.field_length, self.field_width),
+                            ],
+                            [(0, -self.field_width), (0, self.field_width)],
+                            [
+                                (-self.field_length, -self.field_width),
+                                (-self.field_length, self.field_width),
+                            ],
+                            [
+                                (self.field_length, self.field_width),
+                                (-self.field_length, self.field_width),
+                            ],
+                            [
+                                (self.field_length, -self.field_width),
+                                (-self.field_length, -self.field_width),
+                            ],
+                            [
+                                (
+                                    self.field_length * GOAL_SCALE_X,
+                                    -self.field_width * GOAL_SCALE_Y,
+                                ),
+                                (
+                                    self.field_length * GOAL_SCALE_X,
+                                    self.field_width * GOAL_SCALE_Y,
+                                ),
                             ],
                             [
                                 (self.field_length, -self.field_width * GOAL_SCALE_Y),
-                                (self.field_length * GOAL_SCALE_X, -self.field_width * GOAL_SCALE_Y),
+                                (
+                                    self.field_length * GOAL_SCALE_X,
+                                    -self.field_width * GOAL_SCALE_Y,
+                                ),
                             ],
                             [
                                 (self.field_length, self.field_width * GOAL_SCALE_Y),
-                                (self.field_length * GOAL_SCALE_X, self.field_width * GOAL_SCALE_Y),
+                                (
+                                    self.field_length * GOAL_SCALE_X,
+                                    self.field_width * GOAL_SCALE_Y,
+                                ),
                             ],
                             [
-                                (self.field_length * PENALTY_SCALE_X, -self.field_width * PENALTY_SCALE_Y),
-                                (self.field_length * PENALTY_SCALE_X, self.field_width * PENALTY_SCALE_Y),
+                                (
+                                    self.field_length * PENALTY_SCALE_X,
+                                    -self.field_width * PENALTY_SCALE_Y,
+                                ),
+                                (
+                                    self.field_length * PENALTY_SCALE_X,
+                                    self.field_width * PENALTY_SCALE_Y,
+                                ),
                             ],
                             [
-                                (self.field_length, -self.field_width * PENALTY_SCALE_Y),
-                                (self.field_length * PENALTY_SCALE_X, -self.field_width * PENALTY_SCALE_Y),
+                                (
+                                    self.field_length,
+                                    -self.field_width * PENALTY_SCALE_Y,
+                                ),
+                                (
+                                    self.field_length * PENALTY_SCALE_X,
+                                    -self.field_width * PENALTY_SCALE_Y,
+                                ),
                             ],
                             [
                                 (self.field_length, self.field_width * PENALTY_SCALE_Y),
-                                (self.field_length * PENALTY_SCALE_X, self.field_width * PENALTY_SCALE_Y),
+                                (
+                                    self.field_length * PENALTY_SCALE_X,
+                                    self.field_width * PENALTY_SCALE_Y,
+                                ),
                             ],
                             [
-                                (-self.field_length * GOAL_SCALE_X, -self.field_width * GOAL_SCALE_Y),
-                                (-self.field_length * GOAL_SCALE_X, self.field_width * GOAL_SCALE_Y),
+                                (
+                                    -self.field_length * GOAL_SCALE_X,
+                                    -self.field_width * GOAL_SCALE_Y,
+                                ),
+                                (
+                                    -self.field_length * GOAL_SCALE_X,
+                                    self.field_width * GOAL_SCALE_Y,
+                                ),
                             ],
                             [
                                 (-self.field_length, -self.field_width * GOAL_SCALE_Y),
-                                (-self.field_length * GOAL_SCALE_X, -self.field_width * GOAL_SCALE_Y),
+                                (
+                                    -self.field_length * GOAL_SCALE_X,
+                                    -self.field_width * GOAL_SCALE_Y,
+                                ),
                             ],
                             [
                                 (-self.field_length, self.field_width * GOAL_SCALE_Y),
-                                (-self.field_length * GOAL_SCALE_X, self.field_width * GOAL_SCALE_Y),
+                                (
+                                    -self.field_length * GOAL_SCALE_X,
+                                    self.field_width * GOAL_SCALE_Y,
+                                ),
                             ],
                             [
-                                (-self.field_length * PENALTY_SCALE_X, -self.field_width * PENALTY_SCALE_Y),
-                                (-self.field_length * PENALTY_SCALE_X, self.field_width * PENALTY_SCALE_Y),
+                                (
+                                    -self.field_length * PENALTY_SCALE_X,
+                                    -self.field_width * PENALTY_SCALE_Y,
+                                ),
+                                (
+                                    -self.field_length * PENALTY_SCALE_X,
+                                    self.field_width * PENALTY_SCALE_Y,
+                                ),
                             ],
                             [
-                                (-self.field_length, -self.field_width * PENALTY_SCALE_Y),
-                                (-self.field_length * PENALTY_SCALE_X, -self.field_width * PENALTY_SCALE_Y),
+                                (
+                                    -self.field_length,
+                                    -self.field_width * PENALTY_SCALE_Y,
+                                ),
+                                (
+                                    -self.field_length * PENALTY_SCALE_X,
+                                    -self.field_width * PENALTY_SCALE_Y,
+                                ),
                             ],
                             [
-                                (-self.field_length, self.field_width * PENALTY_SCALE_Y),
-                                (-self.field_length * PENALTY_SCALE_X, self.field_width * PENALTY_SCALE_Y),
+                                (
+                                    -self.field_length,
+                                    self.field_width * PENALTY_SCALE_Y,
+                                ),
+                                (
+                                    -self.field_length * PENALTY_SCALE_X,
+                                    self.field_width * PENALTY_SCALE_Y,
+                                ),
                             ],
                         ],
-                        colors=["b" for _ in range(3)] + ["r" for _ in range(3)] + ["w" for _ in range(17)],
+                        colors=["b" for _ in range(3)]
+                        + ["r" for _ in range(3)]
+                        + ["w" for _ in range(17)],
                         linewidths=3,
                         transform=rot,
                         linestyles="solid",
-                        **self.default_plot_kwargs
+                        **self.default_plot_kwargs,
                     )
                 )
 
@@ -250,8 +353,16 @@ class ValuePlotter:
 
     def plot_value_fun(self, ego_world_state, values):
         num_cols = self.num_value_funcs
-        red_pos_w = ego_world_state[3 * self.num_agents_per_team : -2].view(self.num_agents_per_team, 3).numpy()
-        blue_pos_w = ego_world_state[: 3 * self.num_agents_per_team].view(self.num_agents_per_team, 3).numpy()
+        red_pos_w = (
+            ego_world_state[3 * self.num_agents_per_team : -2]
+            .view(self.num_agents_per_team, 3)
+            .numpy()
+        )
+        blue_pos_w = (
+            ego_world_state[: 3 * self.num_agents_per_team]
+            .view(self.num_agents_per_team, 3)
+            .numpy()
+        )
         ball_pos_w = ego_world_state[-2:]
         for j in range(num_cols):
             for k in range(self.num_players_to_visualize):
@@ -273,7 +384,10 @@ class ValuePlotter:
                     axis=1,
                 )
                 line_segments = np.concatenate(
-                    (np.expand_dims(agent_pose[:, :2], axis=1), np.expand_dims(agent_pose[:, :2] + B * 0.1, axis=1)),
+                    (
+                        np.expand_dims(agent_pose[:, :2], axis=1),
+                        np.expand_dims(agent_pose[:, :2] + B * 0.1, axis=1),
+                    ),
                     axis=1,
                 )
                 self.lines[i].set_segments(line_segments)

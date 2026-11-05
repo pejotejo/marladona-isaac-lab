@@ -32,7 +32,9 @@ if TYPE_CHECKING:
 
 
 def field_levels(
-    env: RLTaskEnv, env_ids: Sequence[int], asset_cfg: SceneEntityCfg = SceneEntityCfg("ball")
+    env: RLTaskEnv,
+    env_ids: Sequence[int],
+    asset_cfg: SceneEntityCfg = SceneEntityCfg("ball"),
 ) -> torch.Tensor:
     terrain: TerrainImporter = env.scene.terrain
 

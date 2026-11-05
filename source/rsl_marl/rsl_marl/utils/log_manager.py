@@ -43,12 +43,16 @@ def store_code_state(logdir, repositories):
             f"--- git status ---\n{repo.git.status()} \n\n\n--- git commit ---\n{repo.commit()}\n\n\n--- git branch"
             f" ---\n{branch_name}\n\n\n--- git diff ---\n{repo.git.diff(t)}\n"
         )
-        with open(os.path.join(logdir, f"{repo_name}_git.diff"), "x", encoding="utf-8") as f:
+        with open(
+            os.path.join(logdir, f"{repo_name}_git.diff"), "x", encoding="utf-8"
+        ) as f:
             f.write(content)
 
 
 class LogManager:
-    def __init__(self, env, alg, log_directory, command_args, env_cfg, train_cfg, device):
+    def __init__(
+        self, env, alg, log_directory, command_args, env_cfg, train_cfg, device
+    ):
         self.env: SoccerMARLEnv = env
         self.alg = alg
 
@@ -78,17 +82,23 @@ class LogManager:
         self.set_eval_info()
 
     def get_world_state(self):
-        world_state = self.env.observation_manager._obs_buffer["world_state"]["world_state"]
+        world_state = self.env.observation_manager._obs_buffer["world_state"][
+            "world_state"
+        ]
         return world_state[torch.logical_not(self.env.env_data.is_training_env)]
 
     def init_trajectory_buffer(self):
         eval_world_state = self.get_world_state()
         self.num_eval_env = eval_world_state.shape[0]
 
-        self.last_world_state_eval = torch.zeros_like(eval_world_state).unsqueeze(0).repeat(self.log_steps, 1, 1)
+        self.last_world_state_eval = (
+            torch.zeros_like(eval_world_state).unsqueeze(0).repeat(self.log_steps, 1, 1)
+        )
         self.world_state_eval_buffer = deque(maxlen=self.log_steps)
         self.episode_length_buf = torch.zeros_like(
-            self.env.episode_length_buf[torch.logical_not(self.env.env_data.is_training_env)]
+            self.env.episode_length_buf[
+                torch.logical_not(self.env.env_data.is_training_env)
+            ]
         )
 
     def set_eval_info(self):
@@ -97,20 +107,29 @@ class LogManager:
         self.eval_info["team_config"] = self.env.env_data.active_agent_per_team[
             torch.logical_not(self.env.env_data.is_training_env)
         ]
-        self.eval_info["score"] = self.env.env_data.score[torch.logical_not(self.env.env_data.is_training_env)]
+        self.eval_info["score"] = self.env.env_data.score[
+            torch.logical_not(self.env.env_data.is_training_env)
+        ]
         self.eval_info["episode_len"] = self.env.episode_length_buf[
             torch.logical_not(self.env.env_data.is_training_env)
         ]
 
     def update_trajectory_buffer(self, update_index, score):
         # for reduced_env_id in range(len(update_index.nonzero())):
-        if len(update_index.nonzero() > 0) and len(self.world_state_eval_buffer) == self.log_steps:
-            self.last_world_state_eval[:, update_index, :] = torch.stack(list(self.world_state_eval_buffer))[
-                :, update_index, :
-            ]
+        if (
+            len(update_index.nonzero() > 0)
+            and len(self.world_state_eval_buffer) == self.log_steps
+        ):
+            self.last_world_state_eval[:, update_index, :] = torch.stack(
+                list(self.world_state_eval_buffer)
+            )[:, update_index, :]
             self.eval_info["score"][update_index] = score[update_index]
-            self.eval_info["episode_len"][update_index] = self.episode_length_buf[update_index]
-        self.episode_length_buf[:] = self.env.episode_length_buf[torch.logical_not(self.env.env_data.is_training_env)]
+            self.eval_info["episode_len"][update_index] = self.episode_length_buf[
+                update_index
+            ]
+        self.episode_length_buf[:] = self.env.episode_length_buf[
+            torch.logical_not(self.env.env_data.is_training_env)
+        ]
         obs = self.get_world_state()
         self.world_state_eval_buffer.extend([obs])
 
@@ -139,15 +158,21 @@ class LogManager:
             if self.logger_type == "neptune":
                 from rsl_rl.utils import NeptuneLogWriter
 
-                self.writer = NeptuneLogWriter(log_dir=self.log_dir, project_name=self.cfg["neptune_project"])
+                self.writer = NeptuneLogWriter(
+                    log_dir=self.log_dir, project_name=self.cfg["neptune_project"]
+                )
                 self.writer.store_config(self.env.cfg, self.cfg)
             elif self.logger_type == "wandb":
                 from rsl_rl.utils import WandbLogWriter
 
-                self.writer = WandbLogWriter(log_dir=self.log_dir, project_name=self.cfg["wandb_project"])
+                self.writer = WandbLogWriter(
+                    log_dir=self.log_dir, project_name=self.cfg["wandb_project"]
+                )
                 self.writer.store_config(self.env.cfg, self.cfg)
             elif self.logger_type == "tensorboard":
-                self.writer = TensorboardSummaryWriter(log_dir=self.log_dir, flush_secs=10)
+                self.writer = TensorboardSummaryWriter(
+                    log_dir=self.log_dir, flush_secs=10
+                )
             else:
                 raise AssertionError("logger type not found")
 
@@ -207,42 +232,74 @@ class LogManager:
             / (locs["collection_time"] + locs["learn_time"])
         )
 
-        self.writer.add_scalar("Loss/value_function", locs["mean_value_loss"], locs["it"])
-        self.writer.add_scalar("Loss/surrogate", locs["mean_surrogate_loss"], locs["it"])
+        self.writer.add_scalar(
+            "Loss/value_function", locs["mean_value_loss"], locs["it"]
+        )
+        self.writer.add_scalar(
+            "Loss/surrogate", locs["mean_surrogate_loss"], locs["it"]
+        )
         self.writer.add_scalar("Loss/entropy", locs["entropy_loss"], locs["it"])
         self.writer.add_scalar("Loss/learning_rate", self.alg.learning_rate, locs["it"])
         self.writer.add_scalar("Policy/mean_noise_std", mean_std.item(), locs["it"])
 
         self.writer.add_scalar("Perf/total_fps", fps, locs["it"])
-        self.writer.add_scalar("Perf/collection time", locs["collection_time"], locs["it"])
+        self.writer.add_scalar(
+            "Perf/collection time", locs["collection_time"], locs["it"]
+        )
         self.writer.add_scalar("Perf/learning_time", locs["learn_time"], locs["it"])
 
         if len(locs["scorebufferBlue"]) > 0:
-            self.writer.add_scalar("Train/mean_score_blue_all", statistics.mean(locs["scorebufferBlue"]), locs["it"])
-            self.writer.add_scalar("Train/mean_score_red_all", statistics.mean(locs["scorebufferRed"]), locs["it"])
-            self.writer.add_scalar("Eval/mean_score_blue_all", statistics.mean(locs["scorebufferBlueEval"]), locs["it"])
-            self.writer.add_scalar("Eval/mean_score_red_all", statistics.mean(locs["scorebufferRedEval"]), locs["it"])
+            self.writer.add_scalar(
+                "Train/mean_score_blue_all",
+                statistics.mean(locs["scorebufferBlue"]),
+                locs["it"],
+            )
+            self.writer.add_scalar(
+                "Train/mean_score_red_all",
+                statistics.mean(locs["scorebufferRed"]),
+                locs["it"],
+            )
+            self.writer.add_scalar(
+                "Eval/mean_score_blue_all",
+                statistics.mean(locs["scorebufferBlueEval"]),
+                locs["it"],
+            )
+            self.writer.add_scalar(
+                "Eval/mean_score_red_all",
+                statistics.mean(locs["scorebufferRedEval"]),
+                locs["it"],
+            )
 
         reward_buffer = locs["metric_buffer_dict"]["reward"]
         reward_buffer_eval = locs["metric_buffer_dict_eval"]["reward"]
-        self.writer.add_scalar("Train/init_pos_level", locs["init_pos_level"], locs["it"])
+        self.writer.add_scalar(
+            "Train/init_pos_level", locs["init_pos_level"], locs["it"]
+        )
 
         for name in locs["metric_name_list"]:
             if len(reward_buffer) > 0:
                 self.writer.add_scalar(
-                    f"Train/mean_{name}", statistics.mean(locs["metric_buffer_dict"][name]), locs["it"]
+                    f"Train/mean_{name}",
+                    statistics.mean(locs["metric_buffer_dict"][name]),
+                    locs["it"],
                 )
             if len(reward_buffer_eval) > 0:
                 self.writer.add_scalar(
-                    f"Eval/mean_{name}", statistics.mean(locs["metric_buffer_dict_eval"][name]), locs["it"]
+                    f"Eval/mean_{name}",
+                    statistics.mean(locs["metric_buffer_dict_eval"][name]),
+                    locs["it"],
                 )
 
         str = f" \033[1m Learning iteration {locs['it']}/{locs['tot_iter']} \033[0m "
         log_string = (
-            f"""{'#' * width}\n"""
-            f"""{str.center(width, ' ')}\n"""
-            f"""{'Computation:':>{pad}} {fps:.0f} steps/s (collection: {locs['collection_time']:.3f}s, learning {locs['learn_time']:.3f}s, total {self.tot_time:.2f}s, ETA: {self.tot_time / (locs['it'] + 1) * (
-                            locs['num_learning_iterations'] - locs['it']):.1f}s)\n"""
+            f"""{"#" * width}\n"""
+            f"""{str.center(width, " ")}\n"""
+            f"""{"Computation:":>{pad}} {fps:.0f} steps/s (collection: {
+                locs["collection_time"]:.3f}s, learning {
+                locs["learn_time"]:.3f}s, total {self.tot_time:.2f}s, ETA: {
+                self.tot_time
+                / (locs["it"] + 1)
+                * (locs["num_learning_iterations"] - locs["it"]):.1f}s)\n"""
         )
 
         log_string += ep_string

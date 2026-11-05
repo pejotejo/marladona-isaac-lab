@@ -23,7 +23,12 @@ if TYPE_CHECKING:
 
 
 def border_mesh(
-    outer_length: float, outer_width: float, inner_length: float, inner_width: float, height: float, pos=[0.0, 0.0, 0.0]
+    outer_length: float,
+    outer_width: float,
+    inner_length: float,
+    inner_width: float,
+    height: float,
+    pos=[0.0, 0.0, 0.0],
 ):
     """
     Creates a rectangular border mesh with a rectangular hole
@@ -88,7 +93,9 @@ def soccer_field(difficulty, cfg: "TerrainCfg"):
     x = field_length / 2
     y = goal_width / 2
     goal_offsets = [[x, y, 0], [x, -y, 0], [-x, -y, 0], [-x, y, 0]]
-    meshes += [cylinder_mesh(np.array(pos) + np.array(goal_offsets[i])) for i in range(4)]
+    meshes += [
+        cylinder_mesh(np.array(pos) + np.array(goal_offsets[i])) for i in range(4)
+    ]
 
     meshes = trimesh.util.concatenate(meshes)
 

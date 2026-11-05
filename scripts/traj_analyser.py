@@ -39,7 +39,13 @@ from PyQt5.QtWidgets import (
 
 normal_repr = torch.Tensor.__repr__
 torch.Tensor.__repr__ = lambda self: f"{normal_repr(self)} \n {self.shape}"
-np.set_printoptions(edgeitems=3, linewidth=1000, threshold=100, formatter={"float": "{: 0.3f}".format}, suppress=True)
+np.set_printoptions(
+    edgeitems=3,
+    linewidth=1000,
+    threshold=100,
+    formatter={"float": "{: 0.3f}".format},
+    suppress=True,
+)
 torch.set_printoptions(edgeitems=3, linewidth=1000, threshold=100)
 
 SCALING = 0.6
@@ -118,10 +124,16 @@ class GUIBox(QWidget):
         self.horizontalLayout = QHBoxLayout(self)
         self.verticalLayout = QVBoxLayout()
 
-        self.spacerItemL = QSpacerItem(500, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
-        self.spacerItemM = QSpacerItem(60, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.spacerItemL = QSpacerItem(
+            500, 0, QSizePolicy.Minimum, QSizePolicy.Expanding
+        )
+        self.spacerItemM = QSpacerItem(
+            60, 0, QSizePolicy.Minimum, QSizePolicy.Expanding
+        )
 
-        self.spacerItemR = QSpacerItem(600, 0, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.spacerItemR = QSpacerItem(
+            600, 0, QSizePolicy.Minimum, QSizePolicy.Expanding
+        )
 
         self.verticalLayoutSpeed = QVBoxLayout()
         self.labelSpeed = QLabel("Replay Speed: 5x")
@@ -162,7 +174,9 @@ class GUIBox(QWidget):
         self.sliderPlay.setTickPosition(QSlider.TicksBelow)
         self.sliderPlay.setFixedHeight(25)
         self.sliderPlay.setFixedWidth(300)
-        self.slider_label_play = QLabel("Log Steps (Move slider to the left to auto play)")
+        self.slider_label_play = QLabel(
+            "Log Steps (Move slider to the left to auto play)"
+        )
         self.verticalLayout.addWidget(self.slider_label_play)
         self.verticalLayout.addWidget(self.sliderPlay)
 
@@ -260,8 +274,12 @@ class TrajAnalyser(QMainWindow):
         self.folder_path = folder_path
         self.full_path_to_eval_traj = None
 
-        self.experiments_folder_list = [folder for folder in os.listdir(folder_path) if (folder[0].isdigit())]
-        self.experiments_folder_list.sort(key=lambda m: "{:0>10}".format(m.split("_")[0]))
+        self.experiments_folder_list = [
+            folder for folder in os.listdir(folder_path) if (folder[0].isdigit())
+        ]
+        self.experiments_folder_list.sort(
+            key=lambda m: "{:0>10}".format(m.split("_")[0])
+        )
 
         self.current_folder_id = len(self.experiments_folder_list) - 1
         self.current_folder_name = self.experiments_folder_list[self.current_folder_id]
@@ -303,8 +321,12 @@ class TrajAnalyser(QMainWindow):
         # self.resize(self.sizeHint())
         self.tolerance = 0.4
         self.plot_widget = pg.PlotWidget()
-        self.plot_widget.setXRange(-self.field_length - self.tolerance, self.field_length + self.tolerance)
-        self.plot_widget.setYRange(-self.field_width - self.tolerance, self.field_width + self.tolerance)
+        self.plot_widget.setXRange(
+            -self.field_length - self.tolerance, self.field_length + self.tolerance
+        )
+        self.plot_widget.setYRange(
+            -self.field_width - self.tolerance, self.field_width + self.tolerance
+        )
         self.plot_widget.setAspectLocked(True)
 
         self.plot_widget.setBackground(None)  # Set transparent background
@@ -324,8 +346,12 @@ class TrajAnalyser(QMainWindow):
 
         self.curve_live = self.plot_widget.plot()
 
-        self.gui_box.dropdown_experiment_folders.activated[str].connect(self.update_experiment_folders)
-        self.gui_box.dropdown_experiments.activated[str].connect(self.update_experiments)
+        self.gui_box.dropdown_experiment_folders.activated[str].connect(
+            self.update_experiment_folders
+        )
+        self.gui_box.dropdown_experiments.activated[str].connect(
+            self.update_experiments
+        )
         self.gui_box.sliderR.valueChanged.connect(self.setLabelValueR)
         self.gui_box.sliderB.valueChanged.connect(self.setLabelValueB)
         self.gui_box.sliderEpoch.valueChanged.connect(self.update_checkpoint)
@@ -338,7 +364,9 @@ class TrajAnalyser(QMainWindow):
         self.gui_box.dropdown_highlights.activated[str].connect(self.itemSelected)
         self.gui_box.button_add.clicked.connect(self.addItem)
         self.gui_box.button_del.clicked.connect(self.deleteItem)
-        self.gui_box.checkbox_auto_iterate.stateChanged.connect(self.auto_iterate_over_hightlights)
+        self.gui_box.checkbox_auto_iterate.stateChanged.connect(
+            self.auto_iterate_over_hightlights
+        )
 
         self._timeline = TimeLine(loopCount=0, interval=10)
         self._timeline.setFrameRange(0, self.max_log_steps)
@@ -352,7 +380,9 @@ class TrajAnalyser(QMainWindow):
         self.look_ahead_steps = 20
         self.plot_time_step = 2
 
-        self.current_checkpoint_key = self.traj_dict_key_sorted[self.gui_box.sliderEpoch.value()]
+        self.current_checkpoint_key = self.traj_dict_key_sorted[
+            self.gui_box.sliderEpoch.value()
+        ]
         self.current_env_id = self.gui_box.sliderEnv.value()
         self.num_red = self.gui_box.sliderR.value()
         self.num_blue = self.gui_box.sliderB.value()
@@ -372,7 +402,9 @@ class TrajAnalyser(QMainWindow):
         traj_files = [file for file in os.listdir(folder_path) if "eval_traj" in file]
         traj_dict = dict()
         for traj_file in traj_files:
-            traj_dict[traj_file.split(".")[0]] = torch.load(os.path.join(folder_path, traj_file), weights_only=True)
+            traj_dict[traj_file.split(".")[0]] = torch.load(
+                os.path.join(folder_path, traj_file), weights_only=True
+            )
         self.traj_dict = traj_dict
         team_config = next(iter(self.traj_dict.values()))["infos"]["team_config"]
         min_team_size = torch.min(team_config, dim=0)[0]
@@ -388,7 +420,9 @@ class TrajAnalyser(QMainWindow):
 
         self.current_traj = self.traj_dict[self.traj_dict_key_sorted[0]]
         self.max_log_steps = self.current_traj["infos"]["log_steps"]
-        self.episode_len = torch.clip(self.current_traj["infos"]["episode_len"], 0, self.max_log_steps)
+        self.episode_len = torch.clip(
+            self.current_traj["infos"]["episode_len"], 0, self.max_log_steps
+        )
 
     def save_selection(self):
         with open(self.full_path_to_eval_traj + "/selection.json", "w") as f:
@@ -420,13 +454,19 @@ class TrajAnalyser(QMainWindow):
             self.save_selection()
 
     def deleteItem(self):
-        if len(self.gui_box.items) > 0 and (0 <= self.gui_box.current_selector_id < len(self.gui_box.items)):
+        if len(self.gui_box.items) > 0 and (
+            0 <= self.gui_box.current_selector_id < len(self.gui_box.items)
+        ):
             del self.gui_box.items[self.gui_box.current_selector_id]
-            self.gui_box.dropdown_highlights.removeItem(self.gui_box.current_selector_id)
+            self.gui_box.dropdown_highlights.removeItem(
+                self.gui_box.current_selector_id
+            )
             self.save_selection()
 
     def auto_iterate_over_hightlights(self):
-        self.enable_auto_iterate_over_hightlights = self.gui_box.checkbox_auto_iterate.isChecked()
+        self.enable_auto_iterate_over_hightlights = (
+            self.gui_box.checkbox_auto_iterate.isChecked()
+        )
         self.load_selection()
 
     def itemSelected(self, text):
@@ -518,12 +558,16 @@ class TrajAnalyser(QMainWindow):
 
         self.gui_box.update_agent_number(self.blue_team_size, self.red_team_size)
         if self.current_checkpoint_key is None:
-            self.current_checkpoint_key = self.traj_dict_key_sorted[self.gui_box.sliderEpoch.value()]
+            self.current_checkpoint_key = self.traj_dict_key_sorted[
+                self.gui_box.sliderEpoch.value()
+            ]
         if self.current_env_id is None:
             self.current_env_id = self.gui_box.sliderEnv.value()
 
         self.current_traj = self.traj_dict[self.current_checkpoint_key]
-        self.episode_len = torch.clip(self.current_traj["infos"]["episode_len"], 0, self.max_log_steps)
+        self.episode_len = torch.clip(
+            self.current_traj["infos"]["episode_len"], 0, self.max_log_steps
+        )
 
         team_config = self.current_traj["infos"]["team_config"]
         if "play" in self.full_path_to_eval_traj:
@@ -539,9 +583,9 @@ class TrajAnalyser(QMainWindow):
             self.gui_box.sliderEnv.setRange(0, 0)
         self.current_env_id = min(self.current_env_id, self.num_related_envs - 1)
         sub_episode_len = self.episode_len[self.team_config_env_id]
-        self.world_state = self.current_traj["world_state_traj"][:, self.team_config_env_id, :][
-            -sub_episode_len[self.current_env_id] :, self.current_env_id, :
-        ]
+        self.world_state = self.current_traj["world_state_traj"][
+            :, self.team_config_env_id, :
+        ][-sub_episode_len[self.current_env_id] :, self.current_env_id, :]
         self._timeline.setFrameRange(0, sub_episode_len[self.current_env_id])
         self._timeline.reset()
         self.plot_scatter()
@@ -554,7 +598,9 @@ class TrajAnalyser(QMainWindow):
             .numpy()
         )
         blue_pos_w = (
-            world_state[:, : 3 * self.max_num_agents].reshape(-1, self.max_num_agents, 3)[:, : self.num_blue, :].numpy()
+            world_state[:, : 3 * self.max_num_agents]
+            .reshape(-1, self.max_num_agents, 3)[:, : self.num_blue, :]
+            .numpy()
         )
         ball_pos_w = world_state[:, -2:]
 
@@ -611,7 +657,8 @@ class TrajAnalyser(QMainWindow):
     def plot_scatter_live(self, current_time_step):
         def map_to_alpha(value):
             return min(
-                int((self.look_ahead_steps - value) * 200 / (self.look_ahead_steps)) + 55,
+                int((self.look_ahead_steps - value) * 200 / (self.look_ahead_steps))
+                + 55,
                 255,
             )
 
@@ -622,7 +669,9 @@ class TrajAnalyser(QMainWindow):
             .numpy()
         )
         blue_pos_w = (
-            world_state[:, : 3 * self.max_num_agents].reshape(-1, self.max_num_agents, 3)[:, : self.num_blue, :].numpy()
+            world_state[:, : 3 * self.max_num_agents]
+            .reshape(-1, self.max_num_agents, 3)[:, : self.num_blue, :]
+            .numpy()
         )
         ball_pos_w = world_state[:, -2:]
 
@@ -630,7 +679,9 @@ class TrajAnalyser(QMainWindow):
         num_blue_agents = blue_pos_w.shape[1]
 
         data_live = []
-        plot_range = range(0, min(int(self.look_ahead_steps), current_time_step), self.plot_time_step)
+        plot_range = range(
+            0, min(int(self.look_ahead_steps), current_time_step), self.plot_time_step
+        )
         for i in range(num_red_agents):
             data_live += [
                 {
@@ -714,7 +765,8 @@ class TrajAnalyser(QMainWindow):
         self.scatter_direction.setData(direction_data)
         if (
             self.enable_auto_iterate_over_hightlights
-            and current_time_step == self.episode_len[self.team_config_env_id][self.current_env_id] - 1
+            and current_time_step
+            == self.episode_len[self.team_config_env_id][self.current_env_id] - 1
         ):
             self.current_item += 1
             self.itemSelected(self.gui_box.items[self.current_item])
@@ -738,7 +790,10 @@ class TrajAnalyser(QMainWindow):
                 (self.field_length + line_width, -self.goal_width),
                 (self.field_length + self.goal_depth, -self.goal_width),
             ],
-            [(self.field_length + line_width, self.goal_width), (self.field_length + self.goal_depth, self.goal_width)],
+            [
+                (self.field_length + line_width, self.goal_width),
+                (self.field_length + self.goal_depth, self.goal_width),
+            ],
         ]
         linesR = [
             [
@@ -755,11 +810,23 @@ class TrajAnalyser(QMainWindow):
             ],
         ]
         linesW = [
-            [(self.field_length, -self.field_width), (self.field_length, self.field_width)],
+            [
+                (self.field_length, -self.field_width),
+                (self.field_length, self.field_width),
+            ],
             [(0, -self.field_width), (0, self.field_width)],
-            [(-self.field_length, -self.field_width), (-self.field_length, self.field_width)],
-            [(self.field_length, self.field_width), (-self.field_length, self.field_width)],
-            [(self.field_length, -self.field_width), (-self.field_length, -self.field_width)],
+            [
+                (-self.field_length, -self.field_width),
+                (-self.field_length, self.field_width),
+            ],
+            [
+                (self.field_length, self.field_width),
+                (-self.field_length, self.field_width),
+            ],
+            [
+                (self.field_length, -self.field_width),
+                (-self.field_length, -self.field_width),
+            ],
             [
                 (self.field_length * GOAL_SCALE_X, -self.field_width * GOAL_SCALE_Y),
                 (self.field_length * GOAL_SCALE_X, self.field_width * GOAL_SCALE_Y),
@@ -773,16 +840,28 @@ class TrajAnalyser(QMainWindow):
                 (self.field_length * GOAL_SCALE_X, self.field_width * GOAL_SCALE_Y),
             ],
             [
-                (self.field_length * PENALTY_SCALE_X, -self.field_width * PENALTY_SCALE_Y),
-                (self.field_length * PENALTY_SCALE_X, self.field_width * PENALTY_SCALE_Y),
+                (
+                    self.field_length * PENALTY_SCALE_X,
+                    -self.field_width * PENALTY_SCALE_Y,
+                ),
+                (
+                    self.field_length * PENALTY_SCALE_X,
+                    self.field_width * PENALTY_SCALE_Y,
+                ),
             ],
             [
                 (self.field_length, -self.field_width * PENALTY_SCALE_Y),
-                (self.field_length * PENALTY_SCALE_X, -self.field_width * PENALTY_SCALE_Y),
+                (
+                    self.field_length * PENALTY_SCALE_X,
+                    -self.field_width * PENALTY_SCALE_Y,
+                ),
             ],
             [
                 (self.field_length, self.field_width * PENALTY_SCALE_Y),
-                (self.field_length * PENALTY_SCALE_X, self.field_width * PENALTY_SCALE_Y),
+                (
+                    self.field_length * PENALTY_SCALE_X,
+                    self.field_width * PENALTY_SCALE_Y,
+                ),
             ],
             [
                 (-self.field_length * GOAL_SCALE_X, -self.field_width * GOAL_SCALE_Y),
@@ -797,36 +876,58 @@ class TrajAnalyser(QMainWindow):
                 (-self.field_length * GOAL_SCALE_X, self.field_width * GOAL_SCALE_Y),
             ],
             [
-                (-self.field_length * PENALTY_SCALE_X, -self.field_width * PENALTY_SCALE_Y),
-                (-self.field_length * PENALTY_SCALE_X, self.field_width * PENALTY_SCALE_Y),
+                (
+                    -self.field_length * PENALTY_SCALE_X,
+                    -self.field_width * PENALTY_SCALE_Y,
+                ),
+                (
+                    -self.field_length * PENALTY_SCALE_X,
+                    self.field_width * PENALTY_SCALE_Y,
+                ),
             ],
             [
                 (-self.field_length, -self.field_width * PENALTY_SCALE_Y),
-                (-self.field_length * PENALTY_SCALE_X, -self.field_width * PENALTY_SCALE_Y),
+                (
+                    -self.field_length * PENALTY_SCALE_X,
+                    -self.field_width * PENALTY_SCALE_Y,
+                ),
             ],
             [
                 (-self.field_length, self.field_width * PENALTY_SCALE_Y),
-                (-self.field_length * PENALTY_SCALE_X, self.field_width * PENALTY_SCALE_Y),
+                (
+                    -self.field_length * PENALTY_SCALE_X,
+                    self.field_width * PENALTY_SCALE_Y,
+                ),
             ],
         ]
 
         for line in linesB:
-            self.plot_widget.plot([line[0][0], line[1][0]], [line[0][1], line[1][1]], pen=penB)
+            self.plot_widget.plot(
+                [line[0][0], line[1][0]], [line[0][1], line[1][1]], pen=penB
+            )
         for line in linesR:
-            self.plot_widget.plot([line[0][0], line[1][0]], [line[0][1], line[1][1]], pen=penR)
+            self.plot_widget.plot(
+                [line[0][0], line[1][0]], [line[0][1], line[1][1]], pen=penR
+            )
 
         for line in linesW:
-            self.plot_widget.plot([line[0][0], line[1][0]], [line[0][1], line[1][1]], pen=penW)
+            self.plot_widget.plot(
+                [line[0][0], line[1][0]], [line[0][1], line[1][1]], pen=penW
+            )
 
         radius = self.field_length * CIRCLE_SCALE
 
-        circle = QGraphicsEllipseItem(-radius, -radius, 2 * radius, 2 * radius)  # x, y, width, height
+        circle = QGraphicsEllipseItem(
+            -radius, -radius, 2 * radius, 2 * radius
+        )  # x, y, width, height
         circle.setPen(penW)
         self.plot_widget.addItem(circle)
 
 
 def main():
-    wks_logs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "wks_logs")
+    wks_logs_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "wks_logs"
+    )
     window = TrajAnalyser(wks_logs_dir)
     window.showFullScreen()
 

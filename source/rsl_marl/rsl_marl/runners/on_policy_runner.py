@@ -33,7 +33,9 @@ if TYPE_CHECKING:
 
 
 class OnPolicyRunner:
-    def __init__(self, env: VecEnv, train_cfg, log_dir=None, device="cpu", command_args=None):
+    def __init__(
+        self, env: VecEnv, train_cfg, log_dir=None, device="cpu", command_args=None
+    ):
         self.env_cfg: SoccerMARLEnvCfg = env.cfg
         self.cfg = train_cfg
         self.alg_cfg = train_cfg["algorithm"]
@@ -60,7 +62,9 @@ class OnPolicyRunner:
         )
         self.max_num_obs_agents = self.max_num_teammate + self.max_num_opponent
 
-        self.num_neighbor_obs = obs_dict["neighbor"].shape[-1] // self.max_num_obs_agents
+        self.num_neighbor_obs = (
+            obs_dict["neighbor"].shape[-1] // self.max_num_obs_agents
+        )
 
         actor_critic_class = eval(self.policy_cfg.pop("class_name"))  # ActorCritic
         actor_critic: ActorCriticBeta = actor_critic_class(
@@ -78,17 +82,30 @@ class OnPolicyRunner:
         self.alg: PPO = alg_class(actor_critic, device=self.device, **self.alg_cfg)
         self.alg.obs_mirror_index = torch.tensor(
             self.env.unwrapped.observation_manager._group_symmetry_index["policy"]
-            + [self.num_obs + i for i in self.env.unwrapped.observation_manager._group_symmetry_index["neighbor"]]
+            + [
+                self.num_obs + i
+                for i in self.env.unwrapped.observation_manager._group_symmetry_index[
+                    "neighbor"
+                ]
+            ]
         ).to(self.device)
         self.num_steps_per_env = self.cfg["num_steps_per_env"]
         self.save_interval = self.cfg["save_interval"]
 
         self.bot_policy = Bots(self.env, self.device)
 
-        self.total_num_replay_actors = len(self.env_data.policy_replay_actor_index.nonzero())
+        self.total_num_replay_actors = len(
+            self.env_data.policy_replay_actor_index.nonzero()
+        )
 
         self.logger = LogManager(
-            self.env.unwrapped, self.alg, log_dir, command_args, self.env_cfg, train_cfg, device=self.device
+            self.env.unwrapped,
+            self.alg,
+            log_dir,
+            command_args,
+            self.env_cfg,
+            train_cfg,
+            device=self.device,
         )
 
         if self.env_data.num_policy_replay_agents_per_env > 0:
@@ -111,8 +128,12 @@ class OnPolicyRunner:
 
     def reset_buffers(self):
         if self.env_data.num_policy_replay_agents_per_env > 0:
-            self.policy_replay_manager.num_envs = len(self.env_data.policy_replay_actor_index.nonzero())
-        self.total_num_training_actors = len(self.env_data.training_actor_index.nonzero())
+            self.policy_replay_manager.num_envs = len(
+                self.env_data.policy_replay_actor_index.nonzero()
+            )
+        self.total_num_training_actors = len(
+            self.env_data.training_actor_index.nonzero()
+        )
         self.logger.init_config(self.total_num_training_actors)
         # init storage and model
         self.alg.init_storage(
@@ -163,7 +184,9 @@ class OnPolicyRunner:
                 device=self.device,
             )
 
-        cur_level = torch.zeros(self.env.num_envs, dtype=torch.int64, device=self.device)
+        cur_level = torch.zeros(
+            self.env.num_envs, dtype=torch.int64, device=self.device
+        )
         start_iter = self.current_learning_iteration
         tot_iter = start_iter + num_learning_iterations
         init_pos_level = 0
@@ -177,7 +200,9 @@ class OnPolicyRunner:
             with torch.inference_mode():
                 for i in range(self.num_steps_per_env):
                     obs = torch.cat([obs_dict["policy"], obs_dict["neighbor"]], dim=1)
-                    critic_obs = torch.cat([obs_dict["critic"], obs_dict["neighbor_critic"]], dim=1)
+                    critic_obs = torch.cat(
+                        [obs_dict["critic"], obs_dict["neighbor_critic"]], dim=1
+                    )
 
                     actions = torch.zeros(
                         self.env.num_envs * self.env_data.num_agents_per_env,
@@ -185,29 +210,39 @@ class OnPolicyRunner:
                         device=self.device,
                     )
                     actions[self.env_data.training_actor_index] = self.alg.act(
-                        obs[self.env_data.training_actor_index], critic_obs[self.env_data.training_actor_index]
+                        obs[self.env_data.training_actor_index],
+                        critic_obs[self.env_data.training_actor_index],
                     )
-                    actions[self.env_data.eval_actor_index] = self.alg.actor_critic.act_inference(
-                        obs[self.env_data.eval_actor_index]
+                    actions[self.env_data.eval_actor_index] = (
+                        self.alg.actor_critic.act_inference(
+                            obs[self.env_data.eval_actor_index]
+                        )
                     )
                     if self.env_data.num_policy_replay_agents_per_env > 0:
-                        actions[self.env_data.policy_replay_actor_index] = self.policy_replay_manager.act(
-                            obs[self.env_data.policy_replay_actor_index], level=8
+                        actions[self.env_data.policy_replay_actor_index] = (
+                            self.policy_replay_manager.act(
+                                obs[self.env_data.policy_replay_actor_index], level=8
+                            )
                         )
                     actions[self.env_data.bots_actor_index] = self.bot_policy.act(
                         obs_dict["bots"],
                         actions,
                         self.env_data.bots_actor_index,
-                        configs=["keeper"] + ["player"] * (self.env_data.num_agents_per_team - 1),
+                        configs=["keeper"]
+                        + ["player"] * (self.env_data.num_agents_per_team - 1),
                     )
 
                     obs_dict, rewards, actor_dones, infos = self.env.step(actions)
-                    env_dones = actor_dones.reshape(self.env_data.team_flatten_base_shape)[:, 0]
+                    env_dones = actor_dones.reshape(
+                        self.env_data.team_flatten_base_shape
+                    )[:, 0]
 
                     rewards_clone = rewards.clone()
 
                     training_info = deepcopy(infos)
-                    training_info["time_outs"] = training_info["time_outs"][self.env_data.training_actor_index]
+                    training_info["time_outs"] = training_info["time_outs"][
+                        self.env_data.training_actor_index
+                    ]
                     self.alg.process_env_step(
                         rewards_clone[self.env_data.training_actor_index],
                         actor_dones[self.env_data.training_actor_index],
@@ -220,18 +255,25 @@ class OnPolicyRunner:
                             ep_infos.append(infos["episode"])
 
                         update_log_index = torch.logical_or(
-                            self.env_data.training_actor_index, self.env_data.eval_actor_index
+                            self.env_data.training_actor_index,
+                            self.env_data.eval_actor_index,
                         )
-                        metric_sum_dict["reward"][update_log_index] += (rewards)[update_log_index]
+                        metric_sum_dict["reward"][update_log_index] += (rewards)[
+                            update_log_index
+                        ]
                         metric_sum_dict["episode_length"][update_log_index] += 1
 
                         new_actor_ids_train = (
-                            torch.logical_and((actor_dones > 0), self.env_data.training_actor_index)
+                            torch.logical_and(
+                                (actor_dones > 0), self.env_data.training_actor_index
+                            )
                             .nonzero(as_tuple=False)
                             .flatten()
                         )
                         new_actor_ids_eval = (
-                            torch.logical_and((actor_dones > 0), self.env_data.eval_actor_index)
+                            torch.logical_and(
+                                (actor_dones > 0), self.env_data.eval_actor_index
+                            )
                             .nonzero(as_tuple=False)
                             .flatten()
                         )
@@ -239,11 +281,17 @@ class OnPolicyRunner:
                         for metric_name in metric_name_list:
                             if len(new_actor_ids_train) != 0:
                                 metric_buffer_dict[metric_name].extend(
-                                    metric_sum_dict[metric_name][new_actor_ids_train].cpu().numpy().tolist()
+                                    metric_sum_dict[metric_name][new_actor_ids_train]
+                                    .cpu()
+                                    .numpy()
+                                    .tolist()
                                 )
                             if len(new_actor_ids_eval) != 0:
                                 metric_buffer_dict_eval[metric_name].extend(
-                                    metric_sum_dict[metric_name][new_actor_ids_eval].cpu().numpy().tolist()
+                                    metric_sum_dict[metric_name][new_actor_ids_eval]
+                                    .cpu()
+                                    .numpy()
+                                    .tolist()
                                 )
                             if len(new_actor_ids_train) != 0:
                                 metric_sum_dict[metric_name][new_actor_ids_train] = 0
@@ -251,28 +299,59 @@ class OnPolicyRunner:
                                 metric_sum_dict[metric_name][new_actor_ids_eval] = 0
 
                         new_env_ids_train = (
-                            torch.logical_and((env_dones > 0), self.env_data.is_training_env)
+                            torch.logical_and(
+                                (env_dones > 0), self.env_data.is_training_env
+                            )
                             .nonzero(as_tuple=False)
                             .flatten()
                         )
                         new_env_ids_eval = (
-                            torch.logical_and((env_dones > 0), torch.logical_not(self.env_data.is_training_env))
+                            torch.logical_and(
+                                (env_dones > 0),
+                                torch.logical_not(self.env_data.is_training_env),
+                            )
                             .nonzero(as_tuple=False)
                             .flatten()
                         )
                         self.logger.update_trajectory_buffer(
-                            env_dones[torch.logical_not(self.env_data.is_training_env)] > 0,
-                            infos["score"][torch.logical_not(self.env_data.is_training_env)],
+                            env_dones[torch.logical_not(self.env_data.is_training_env)]
+                            > 0,
+                            infos["score"][
+                                torch.logical_not(self.env_data.is_training_env)
+                            ],
                         )
 
-                        scorebufferBlue.extend(infos["score"][new_env_ids_train][:, 0].cpu().numpy().tolist())
-                        scorebufferRed.extend(infos["score"][new_env_ids_train][:, 1].cpu().numpy().tolist())
+                        scorebufferBlue.extend(
+                            infos["score"][new_env_ids_train][:, 0]
+                            .cpu()
+                            .numpy()
+                            .tolist()
+                        )
+                        scorebufferRed.extend(
+                            infos["score"][new_env_ids_train][:, 1]
+                            .cpu()
+                            .numpy()
+                            .tolist()
+                        )
 
-                        scorebufferBlueEval.extend(infos["score"][new_env_ids_eval][:, 0].cpu().numpy().tolist())
-                        scorebufferRedEval.extend(infos["score"][new_env_ids_eval][:, 1].cpu().numpy().tolist())
+                        scorebufferBlueEval.extend(
+                            infos["score"][new_env_ids_eval][:, 0]
+                            .cpu()
+                            .numpy()
+                            .tolist()
+                        )
+                        scorebufferRedEval.extend(
+                            infos["score"][new_env_ids_eval][:, 1]
+                            .cpu()
+                            .numpy()
+                            .tolist()
+                        )
 
                         scorebufferDiff.extend(
-                            (infos["score"][new_env_ids_train][:, 0] - infos["score"][new_env_ids_train][:, 1])
+                            (
+                                infos["score"][new_env_ids_train][:, 0]
+                                - infos["score"][new_env_ids_train][:, 1]
+                            )
                             .cpu()
                             .numpy()
                             .tolist()
@@ -289,7 +368,8 @@ class OnPolicyRunner:
 
             policy_good_enough = (
                 len(scorebufferDiff) != 0
-                and statistics.mean(scorebufferDiff) > self.policy_replay_cfg["score_difference"]
+                and statistics.mean(scorebufferDiff)
+                > self.policy_replay_cfg["score_difference"]
                 and it - last_save_curriculum_level > 100
             )
 
@@ -301,9 +381,9 @@ class OnPolicyRunner:
             )
 
             if policy_good_enough:
-                self.env.unwrapped.reward_manager.performance_metrics["average_score"] = statistics.mean(
-                    scorebufferDiff
-                )
+                self.env.unwrapped.reward_manager.performance_metrics[
+                    "average_score"
+                ] = statistics.mean(scorebufferDiff)
 
             if policy_good_enough:
                 last_save_curriculum_level = it
@@ -326,7 +406,8 @@ class OnPolicyRunner:
                 self.env_data.regenerate_level_config()
                 if init_at_random_ep_len:
                     self.env.episode_length_buf = torch.randint_like(
-                        self.env.episode_length_buf, high=int(self.env.max_episode_length)
+                        self.env.episode_length_buf,
+                        high=int(self.env.max_episode_length),
                     )
                 self.reset_buffers()
                 if self.env_data.num_policy_replay_agents_per_env > 0:

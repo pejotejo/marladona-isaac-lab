@@ -35,7 +35,9 @@ class Bots:
         self.alignment_angle_offset = 1.5  # rad
         self.kick_trigger_distance = 0.15
 
-    def act(self, obs, previous_action, env_ids, configs=["keeper", "player", "player"]):
+    def act(
+        self, obs, previous_action, env_ids, configs=["keeper", "player", "player"]
+    ):
         base_pose_w = obs["base_own_pose_w"][env_ids]
         ball_pos_b = obs["ball_pos_b"][env_ids]
         ball_pos_w_buffer = obs["ball_pos_w"][env_ids]
@@ -74,7 +76,15 @@ class Bots:
         player_previous_action = torch.clip(player_previous_action, -1.0, 1.0)
         return player_previous_action
 
-    def player_apply_action(self, ball_pos_b, ball_pos_w_buffer, own_pose_w, field_info, closest_idx, previous_action):
+    def player_apply_action(
+        self,
+        ball_pos_b,
+        ball_pos_w_buffer,
+        own_pose_w,
+        field_info,
+        closest_idx,
+        previous_action,
+    ):
         ball_pos_w = ball_pos_w_buffer.view(-1, 2, 2)[..., -1]
         ball_pos_w_vel = ball_pos_w - ball_pos_w_buffer.view(-1, 2, 2)[..., 0]
 
@@ -94,11 +104,15 @@ class Bots:
         )
         alignment_angle = torch.atan2(y, x)
 
-        engage_ball_index = torch.logical_and(ball_pos_b[:, 0] > self.circle_around_distance, closest_idx)
+        engage_ball_index = torch.logical_and(
+            ball_pos_b[:, 0] > self.circle_around_distance, closest_idx
+        )
         defend_index = torch.logical_not(closest_idx)
         target_w = ball_pos_w[engage_ball_index] * 1.0
         target_w[:, 1] += 25 * ball_pos_w_vel[engage_ball_index, 1]
-        previous_action[engage_ball_index, :2] = self.goto_target(own_pose_w[engage_ball_index], target_w)
+        previous_action[engage_ball_index, :2] = self.goto_target(
+            own_pose_w[engage_ball_index], target_w
+        )
         previous_action[defend_index, :2] = self.goto_target(
             own_pose_w[defend_index],
             (ball_pos_w[defend_index] - goal_pos_w[defend_index]) / 2,
@@ -110,10 +124,16 @@ class Bots:
             ),
             closest_idx,
         )
-        previous_action[:, 0][circle_around_index] = (ball_pos_b[:, 0][circle_around_index] - 0.25) * 10
+        previous_action[:, 0][circle_around_index] = (
+            ball_pos_b[:, 0][circle_around_index] - 0.25
+        ) * 10
 
-        circle_alignment_index = torch.logical_and(ball_pos_b[:, 0] <= self.circle_around_distance, closest_idx)
-        previous_action[:, 1][circle_alignment_index] = -alignment_angle[circle_alignment_index] * 3
+        circle_alignment_index = torch.logical_and(
+            ball_pos_b[:, 0] <= self.circle_around_distance, closest_idx
+        )
+        previous_action[:, 1][circle_alignment_index] = (
+            -alignment_angle[circle_alignment_index] * 3
+        )
 
         aligned_index = torch.logical_and(
             ball_pos_b[:, 0] <= self.circle_around_distance,
@@ -121,11 +141,21 @@ class Bots:
         )
         previous_action[:, 0][aligned_index] = 1.0
 
-        previous_action[:, 3:5] = rotate2d(ball2goal_direction[:, 0], ball2goal_direction[:, 1], own_pose_w[:, 2])
+        previous_action[:, 3:5] = rotate2d(
+            ball2goal_direction[:, 0], ball2goal_direction[:, 1], own_pose_w[:, 2]
+        )
 
         return previous_action
 
-    def keeper_apply_action(self, ball_pos_b, ball_pos_w_buffer, own_pose_w, field_info, closest_idx, previous_action):
+    def keeper_apply_action(
+        self,
+        ball_pos_b,
+        ball_pos_w_buffer,
+        own_pose_w,
+        field_info,
+        closest_idx,
+        previous_action,
+    ):
         ball_pos_w = ball_pos_w_buffer.view(-1, 2, 2)[..., -1]
         ball_pos_w_vel = ball_pos_w - ball_pos_w_buffer.view(-1, 2, 2)[..., 0]
         field_length = field_info[:, 2]
@@ -139,7 +169,10 @@ class Bots:
         )
         intersection_point = ball_pos_w[:, 1]
         intersection_point[ball_approach_goal_index] += (
-            (field_length[ball_approach_goal_index] - ball_pos_w[ball_approach_goal_index, 0])
+            (
+                field_length[ball_approach_goal_index]
+                - ball_pos_w[ball_approach_goal_index, 0]
+            )
             / ball_pos_w_vel[ball_approach_goal_index, 0]
             * ball_pos_w_vel[ball_approach_goal_index, 1]
         )
@@ -156,11 +189,16 @@ class Bots:
 
         previous_action[:, 3][ball_pos_b[:, 0] < self.kick_trigger_distance] = 1.0
         previous_action[:, 4] = 0
-        previous_action[:, 3:5] = rotate2d(-ball2goal_direction[:, 0], -ball2goal_direction[:, 1], own_pose_w[:, 2])
+        previous_action[:, 3:5] = rotate2d(
+            -ball2goal_direction[:, 0], -ball2goal_direction[:, 1], own_pose_w[:, 2]
+        )
 
         previous_action[:, :2] = self.goto_target(own_pose_w, target_w)
         previous_action[:, 0][
-            torch.logical_and(ball_pos_w[:, 0] > 0.5, torch.logical_and(ball_pos_b[:, 0] < 0.5, closest_idx))
+            torch.logical_and(
+                ball_pos_w[:, 0] > 0.5,
+                torch.logical_and(ball_pos_b[:, 0] < 0.5, closest_idx),
+            )
         ] = 1.0
         return previous_action
 

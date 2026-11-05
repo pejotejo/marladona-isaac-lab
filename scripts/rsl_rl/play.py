@@ -6,6 +6,7 @@
 # Modifications copyright (c) 2025 Zichong Li, ETH Zurich
 
 """Script to play a checkpoint if an RL agent from RSL-RL."""
+
 """Launch Isaac Sim Simulator first."""
 
 import argparse
@@ -27,22 +28,38 @@ VISUALIZE_ENV = 0
 
 
 normal_repr = torch.Tensor.__repr__
-torch.Tensor.__repr__ = lambda self: f"{normal_repr(self)} \n {self.shape}, {self.min()}, {self.max()}"
+torch.Tensor.__repr__ = lambda self: (
+    f"{normal_repr(self)} \n {self.shape}, {self.min()}, {self.max()}"
+)
 np.set_printoptions(edgeitems=3, linewidth=1000, threshold=100)
 torch.set_printoptions(edgeitems=3, linewidth=1000, threshold=100)
 
 
 # add argparse arguments
 parser = argparse.ArgumentParser(description="Train an RL agent with RSL-RL.")
-parser.add_argument("--video", action="store_true", default=False, help="Record videos during training.")
-parser.add_argument("--video_length", type=int, default=200, help="Length of the recorded video (in steps).")
 parser.add_argument(
-    "--disable_fabric", action="store_true", default=False, help="Disable fabric and use USD I/O operations."
+    "--video", action="store_true", default=False, help="Record videos during training."
 )
-parser.add_argument("--num_envs", type=int, default=None, help="Number of environments to simulate.")
+parser.add_argument(
+    "--video_length",
+    type=int,
+    default=200,
+    help="Length of the recorded video (in steps).",
+)
+parser.add_argument(
+    "--disable_fabric",
+    action="store_true",
+    default=False,
+    help="Disable fabric and use USD I/O operations.",
+)
+parser.add_argument(
+    "--num_envs", type=int, default=None, help="Number of environments to simulate."
+)
 parser.add_argument("--task", type=str, default=None, help="Name of the task.")
 parser.add_argument("--headless", action="store_true", help="Run without a Kit window.")
-parser.add_argument("--enable_cameras", action="store_true", help="Enable offscreen camera rendering.")
+parser.add_argument(
+    "--enable_cameras", action="store_true", help="Enable offscreen camera rendering."
+)
 
 # append RSL-RL cli arguments
 cli_args.add_rsl_rl_args(parser)
@@ -80,7 +97,9 @@ from isaaclab_marl.config import WKS_LOGS_DIR
 from isaaclab_marl.utils.value_plotter import RESOLUTION, ValuePlotter
 
 if TYPE_CHECKING:
-    from isaaclab_marl.tasks.soccer.agents.soccer_marl_ppo_runner_cfg import SoccerMARLPPORunnerCfg
+    from isaaclab_marl.tasks.soccer.agents.soccer_marl_ppo_runner_cfg import (
+        SoccerMARLPPORunnerCfg,
+    )
     from isaaclab_marl.tasks.soccer.soccer_marl_env_cfg import SoccerMARLEnvCfg
 
 
@@ -88,13 +107,17 @@ def compute_all_value_fun(env, critic, x, y):
     values = None
     for obs_term_name in PLOT_VALUE_FUNC_LIST:
         obs_dict = env.get_observations()
-        obs_slice = env.unwrapped.observation_manager._group_obs_slice_pos["critic"][obs_term_name]
+        obs_slice = env.unwrapped.observation_manager._group_obs_slice_pos["critic"][
+            obs_term_name
+        ]
         actor_slice = (
             torch.arange(NUM_OF_PLAYERS_TO_VISUALIZE, device=env.device)
             + VISUALIZE_ENV * env.unwrapped.env_data.num_agents_per_env
         )
 
-        critic_obs = torch.cat([obs_dict["critic"], obs_dict["neighbor_critic"]], dim=-1)[actor_slice]
+        critic_obs = torch.cat(
+            [obs_dict["critic"], obs_dict["neighbor_critic"]], dim=-1
+        )[actor_slice]
         for j in range(NUM_OF_PLAYERS_TO_VISUALIZE):
             obs = critic_obs[j]
             obs_grid = obs.unsqueeze(0).repeat(RESOLUTION**2, 1)
@@ -124,10 +147,15 @@ def main():
     """Play with RSL-RL agent."""
     # parse configuration
     env_cfg: SoccerMARLEnvCfg = parse_env_cfg(
-        args_cli.task, device=args_cli.device, num_envs=args_cli.num_envs, use_fabric=not args_cli.disable_fabric
+        args_cli.task,
+        device=args_cli.device,
+        num_envs=args_cli.num_envs,
+        use_fabric=not args_cli.disable_fabric,
     )
 
-    agent_cfg: SoccerMARLPPORunnerCfg = cli_args.parse_rsl_rl_cfg(args_cli.task, args_cli)
+    agent_cfg: SoccerMARLPPORunnerCfg = cli_args.parse_rsl_rl_cfg(
+        args_cli.task, args_cli
+    )
 
     agent_cfg.policy_replay.dynamic_generate_replay_level = False
 
@@ -135,7 +163,9 @@ def main():
     log_root_path = os.path.join(WKS_LOGS_DIR, args_cli.experiment_name)
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
-    resume_path = get_checkpoint_path(log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint)
+    resume_path = get_checkpoint_path(
+        log_root_path, agent_cfg.load_run, agent_cfg.load_checkpoint
+    )
     log_dir = os.path.dirname(resume_path)
 
     # configure Isaac Lab's internal video recorders before creating the environment
@@ -163,7 +193,13 @@ def main():
 
     print(f"[INFO]: Loading model checkpoint from: {resume_path}")
     # load previously trained model
-    ppo_runner = OnPolicyRunner(env, agent_cfg.to_dict(), log_dir=None, device=agent_cfg.device, command_args=args_cli)
+    ppo_runner = OnPolicyRunner(
+        env,
+        agent_cfg.to_dict(),
+        log_dir=None,
+        device=agent_cfg.device,
+        command_args=args_cli,
+    )
     ppo_runner.load(resume_path)
 
     # obtain the trained policy for inference
@@ -177,12 +213,24 @@ def main():
     if VISUALIZE_VALUE_FUN:
         # plot_pipe, plotter_pipe = mp.Pipe()
         queue = mp.Queue()
-        value_plotter = ValuePlotter(env_data.num_agents_per_team, NUM_OF_PLAYERS_TO_VISUALIZE, PLOT_VALUE_FUNC_LIST)
+        value_plotter = ValuePlotter(
+            env_data.num_agents_per_team,
+            NUM_OF_PLAYERS_TO_VISUALIZE,
+            PLOT_VALUE_FUNC_LIST,
+        )
         plot_process = mp.Process(target=value_plotter, args=(queue,))
         plot_process.start()
 
-        x = torch.tensor(value_plotter.x, device=obs_dict["policy"].device).unsqueeze(0).flatten()
-        y = torch.tensor(value_plotter.y, device=obs_dict["policy"].device).unsqueeze(0).flatten()
+        x = (
+            torch.tensor(value_plotter.x, device=obs_dict["policy"].device)
+            .unsqueeze(0)
+            .flatten()
+        )
+        y = (
+            torch.tensor(value_plotter.y, device=obs_dict["policy"].device)
+            .unsqueeze(0)
+            .flatten()
+        )
         x /= value_plotter.field_length
         y /= value_plotter.field_width
     # simulate environment
@@ -205,7 +253,9 @@ def main():
         if sim_step_counter % VISUALIZATION_INTERVAL == 0 and VISUALIZE_VALUE_FUN:
             values = compute_all_value_fun(env, critic, x, y)
 
-            scaled_values = prepare_value_fun_plot(values.detach(), NUM_OF_PLAYERS_TO_VISUALIZE)
+            scaled_values = prepare_value_fun_plot(
+                values.detach(), NUM_OF_PLAYERS_TO_VISUALIZE
+            )
             ego_world_state = obs_dict["world_state"]["world_state"]
             ego_world_state_agent = ego_world_state[0].cpu()
 

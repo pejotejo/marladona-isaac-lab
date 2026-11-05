@@ -25,15 +25,35 @@ class InitPosManager:
         self.blue_default_pos_range = torch.tensor(
             [
                 [[0.1, 0.95], [-0.5, 0.5], [-self.init_rot_noise, self.init_rot_noise]],
-                [[-0.1, 0.5], [-0.95, 0.0], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [-0.1, 0.5],
+                    [-0.95, 0.0],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[-0.1, 0.5], [0.0, 0.95], [-self.init_rot_noise, self.init_rot_noise]],
-                [[0.0, 0.3], [-0.95, -0.1], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [0.0, 0.3],
+                    [-0.95, -0.1],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[0.0, 0.3], [0.1, 0.95], [-self.init_rot_noise, self.init_rot_noise]],
-                [[0.0, 0.9], [-0.95, -0.0], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [0.0, 0.9],
+                    [-0.95, -0.0],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[0.0, 0.9], [0.0, 0.95], [-self.init_rot_noise, self.init_rot_noise]],
-                [[0.0, 0.9], [-0.95, -0.0], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [0.0, 0.9],
+                    [-0.95, -0.0],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[0.0, 0.9], [0.0, 0.95], [-self.init_rot_noise, self.init_rot_noise]],
-                [[0.0, 0.9], [-0.95, -0.0], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [0.0, 0.9],
+                    [-0.95, -0.0],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[0.0, 0.9], [0.0, 0.95], [-self.init_rot_noise, self.init_rot_noise]],
             ],
             device=device,
@@ -43,13 +63,29 @@ class InitPosManager:
                 [[0.1, 0.95], [-0.5, 0.5], [-self.init_rot_noise, self.init_rot_noise]],
                 [[0.1, 0.5], [-0.95, 0.0], [-self.init_rot_noise, self.init_rot_noise]],
                 [[0.1, 0.5], [0.0, 0.95], [-self.init_rot_noise, self.init_rot_noise]],
-                [[0.0, 0.3], [-0.95, -0.1], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [0.0, 0.3],
+                    [-0.95, -0.1],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[0.0, 0.3], [0.1, 0.95], [-self.init_rot_noise, self.init_rot_noise]],
-                [[0.0, 0.9], [-0.65, -0.0], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [0.0, 0.9],
+                    [-0.65, -0.0],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[0.0, 0.9], [0.0, 0.65], [-self.init_rot_noise, self.init_rot_noise]],
-                [[0.0, 0.9], [-0.55, -0.0], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [0.0, 0.9],
+                    [-0.55, -0.0],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[0.0, 0.9], [0.0, 0.55], [-self.init_rot_noise, self.init_rot_noise]],
-                [[0.0, 0.9], [-0.55, -0.0], [-self.init_rot_noise, self.init_rot_noise]],
+                [
+                    [0.0, 0.9],
+                    [-0.55, -0.0],
+                    [-self.init_rot_noise, self.init_rot_noise],
+                ],
                 [[0.0, 0.9], [0.0, 0.55], [-self.init_rot_noise, self.init_rot_noise]],
             ],
             device=device,
@@ -79,7 +115,9 @@ class InitPosManager:
         self.max_level = self.ball_default_pos_range.shape[0] - 1
         self.num_agents_per_team = num_agents_per_team
 
-        self.blue_default_pos = torch.zeros(num_envs, num_agents_per_team, 3, device=device)
+        self.blue_default_pos = torch.zeros(
+            num_envs, num_agents_per_team, 3, device=device
+        )
         self.red_default_pos = torch.zeros_like(self.blue_default_pos)
 
         self.ball_default_pos = torch.zeros(num_envs, 2, device=device)
@@ -99,7 +137,9 @@ class InitPosManager:
                 self.red_default_pos_range[: self.num_agents_per_team, :, 0],
                 self.red_default_pos_range[: self.num_agents_per_team, :, 1],
             )
-            self.red_default_pos[env_ids, ...] = mirror_agent_pose(self.red_default_pos[env_ids, ...])
+            self.red_default_pos[env_ids, ...] = mirror_agent_pose(
+                self.red_default_pos[env_ids, ...]
+            )
             self.ball_default_pos[env_ids, :] = self.uniform_sample(
                 self.ball_default_pos[env_ids, :],
                 self.ball_default_pos_range[self.current_level, :, 0],
@@ -112,8 +152,12 @@ class InitPosManager:
             self.red_default_pos[env_ids, ...] = torch.mean(
                 self.red_default_pos_range[: self.num_agents_per_team], dim=-1
             )
-            self.red_default_pos[env_ids, ...] = mirror_agent_pose(self.red_default_pos[env_ids, ...])
-            self.ball_default_pos[env_ids, :] = torch.mean(self.ball_default_pos_range[self.current_level], dim=-1)
+            self.red_default_pos[env_ids, ...] = mirror_agent_pose(
+                self.red_default_pos[env_ids, ...]
+            )
+            self.ball_default_pos[env_ids, :] = torch.mean(
+                self.ball_default_pos_range[self.current_level], dim=-1
+            )
 
     def uniform_sample(self, tensor, high, low):
         return torch.rand_like(tensor).mul(high - low).add(low)

@@ -34,7 +34,9 @@ class PolicyReplayManager:
         self.num_envs = num_envs
         self.num_replay_agents_per_env = num_replay_agents_per_env
 
-        self.max_num_levels = min(self.cfg["max_num_policy_replay_level"], self.num_envs)
+        self.max_num_levels = min(
+            self.cfg["max_num_policy_replay_level"], self.num_envs
+        )
         if self.cfg["dynamic_generate_replay_level"]:
             self.replay_from_previous_experiments = False
             self.num_levels = 0
@@ -57,9 +59,13 @@ class PolicyReplayManager:
 
     def generate_env_level_indices(self):
         if self.cfg["shuffle"]:
-            env_indices = torch.randperm(self.num_envs, dtype=torch.int32, device=self.device)
+            env_indices = torch.randperm(
+                self.num_envs, dtype=torch.int32, device=self.device
+            )
         else:
-            env_indices = torch.arange(self.num_envs, dtype=torch.int32, device=self.device)
+            env_indices = torch.arange(
+                self.num_envs, dtype=torch.int32, device=self.device
+            )
         self.policy_level_index_dict = dict()
         env_indices_split = torch.chunk(env_indices, self.num_levels)
         for i, key in enumerate(self.policy_buffer.keys()):
@@ -70,12 +76,16 @@ class PolicyReplayManager:
         models.sort(key=lambda m: f"{m:0>15}")
 
         self.num_levels = min(self.max_num_levels, len(models))
-        pathes = [os.path.join(log_folder, model) for model in models][-self.num_levels :]
+        pathes = [os.path.join(log_folder, model) for model in models][
+            -self.num_levels :
+        ]
 
         for i, path in enumerate(pathes):
             loaded_dict = torch.load(path)
             self.policy_buffer[f"level_{i}"] = deepcopy(self.initial_policy)
-            self.policy_buffer[f"level_{i}"].load_state_dict(loaded_dict["model_state_dict"])
+            self.policy_buffer[f"level_{i}"].load_state_dict(
+                loaded_dict["model_state_dict"]
+            )
         self.actor_critic.load_state_dict(loaded_dict["model_state_dict"])
         self.next_policy_level_index = len(pathes)
 
@@ -84,7 +94,9 @@ class PolicyReplayManager:
         if self.num_levels < self.max_num_levels:
             self.num_levels += 1
         else:
-            del self.policy_buffer[f"level_{self.next_policy_level_index - self.num_levels}"]
+            del self.policy_buffer[
+                f"level_{self.next_policy_level_index - self.num_levels}"
+            ]
         self.next_policy_level_index += 1
         self.generate_env_level_indices()
 

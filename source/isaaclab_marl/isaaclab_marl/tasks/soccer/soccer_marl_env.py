@@ -53,7 +53,9 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         # -- counter for curriculum
         self.common_step_counter = 0
         # -- init buffers
-        self.episode_length_buf = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        self.episode_length_buf = torch.zeros(
+            self.num_envs, device=self.device, dtype=torch.long
+        )
         # -- set the framerate of the gym video recorder wrapper so that the playback speed of the produced video matches the simulation
         self.metadata["render_fps"] = 1 / self.step_dt
 
@@ -85,8 +87,20 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         self.env_data.set_field_curriculum_level(self.scene.terrain.terrain_levels)
         self.env_data.set_env_origin(self.scene.env_origins)
         self.env_data.reset()
-        self.agents = Agents(self.cfg.soccer_game, self.env_data, self.num_envs, self.device, self.scene["agents"])
-        self.ball = SoccerBall(self.cfg.soccer_game, self.env_data, self.num_envs, self.device, self.scene["ball"])
+        self.agents = Agents(
+            self.cfg.soccer_game,
+            self.env_data,
+            self.num_envs,
+            self.device,
+            self.scene["agents"],
+        )
+        self.ball = SoccerBall(
+            self.cfg.soccer_game,
+            self.env_data,
+            self.num_envs,
+            self.device,
+            self.scene["ball"],
+        )
         self.init_pos_manager = InitPosManager(
             self.num_envs, self.cfg.soccer_game.num_agents_per_team, device=self.device
         )
@@ -105,7 +119,9 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         self.reward_manager = MultiAgentRewardManager(self.cfg.rewards, self)
         print("[INFO] Reward Manager: ", self.reward_manager)
         # -- observation manager
-        self.observation_manager = MultiAgentObservationManager(self.cfg.observations, self)
+        self.observation_manager = MultiAgentObservationManager(
+            self.cfg.observations, self
+        )
         print("[INFO] Observation Manager: ", self.observation_manager)
         # -- curriculum manager
         self.curriculum_manager = CurriculumManager(self.cfg.curriculum, self)
@@ -171,7 +187,10 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
             # render between steps only if the GUI or an RTX sensor needs it
             # note: we assume the render interval to be the shortest accepted rendering interval.
             #    If a camera needs rendering at a faster frequency, this will lead to unexpected behavior.
-            if self._sim_step_counter % self.cfg.sim.render_interval == 0 and is_rendering:
+            if (
+                self._sim_step_counter % self.cfg.sim.render_interval == 0
+                and is_rendering
+            ):
                 self.sim.render()
             # update buffers at sim dt
             self.scene.update(dt=self.physics_dt)
@@ -182,8 +201,12 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         self.common_step_counter += 1  # total step (common for all envs)
         # -- check terminations
         self.reset_buf = self.termination_manager.compute()
-        self.reset_terminated = self.env_data.expand_to_env(self.termination_manager.terminated, flatten_type="env")
-        self.reset_time_outs = self.env_data.expand_to_env(self.termination_manager.time_outs, flatten_type="env")
+        self.reset_terminated = self.env_data.expand_to_env(
+            self.termination_manager.terminated, flatten_type="env"
+        )
+        self.reset_time_outs = self.env_data.expand_to_env(
+            self.termination_manager.time_outs, flatten_type="env"
+        )
         # -- reward computation
         self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
 
@@ -223,7 +246,13 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         self.obs_buf = self.observation_manager.compute(update_history=True)
 
         # return observations, rewards, resets and extras
-        return self.obs_buf, self.reward_buf, self.reset_terminated, self.reset_time_outs, self.extras
+        return (
+            self.obs_buf,
+            self.reward_buf,
+            self.reset_terminated,
+            self.reset_time_outs,
+            self.extras,
+        )
 
     """
     Helper functions.
@@ -233,28 +262,43 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         """Configure the action and observation spaces for the Gym environment."""
         # observation space (unbounded since we don't impose any limits)
         self.single_observation_space = gym.spaces.Dict()
-        for group_name, group_term_names in self.observation_manager.active_terms.items():
+        for (
+            group_name,
+            group_term_names,
+        ) in self.observation_manager.active_terms.items():
             # extract quantities about the group
-            has_concatenated_obs = self.observation_manager.group_obs_concatenate[group_name]
+            has_concatenated_obs = self.observation_manager.group_obs_concatenate[
+                group_name
+            ]
             group_dim = self.observation_manager.group_obs_dim[group_name]
             # check if group is concatenated or not
             # if not concatenated, then we need to add each term separately as a dictionary
             if has_concatenated_obs:
-                self.single_observation_space[group_name] = gym.spaces.Box(low=-np.inf, high=np.inf, shape=group_dim)
+                self.single_observation_space[group_name] = gym.spaces.Box(
+                    low=-np.inf, high=np.inf, shape=group_dim
+                )
             else:
                 self.single_observation_space[group_name] = gym.spaces.Dict(
                     {
-                        term_name: gym.spaces.Box(low=-np.inf, high=np.inf, shape=term_dim)
+                        term_name: gym.spaces.Box(
+                            low=-np.inf, high=np.inf, shape=term_dim
+                        )
                         for term_name, term_dim in zip(group_term_names, group_dim)
                     }
                 )
         # action space (unbounded since we don't impose any limits)
         action_dim = sum(self.action_manager.action_term_dim)
-        self.single_action_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(action_dim,))
+        self.single_action_space = gym.spaces.Box(
+            low=-np.inf, high=np.inf, shape=(action_dim,)
+        )
 
         # batch the spaces for vectorized environments
-        self.observation_space = gym.vector.utils.batch_space(self.single_observation_space, self.num_envs)
-        self.action_space = gym.vector.utils.batch_space(self.single_action_space, self.num_envs)
+        self.observation_space = gym.vector.utils.batch_space(
+            self.single_observation_space, self.num_envs
+        )
+        self.action_space = gym.vector.utils.batch_space(
+            self.single_action_space, self.num_envs
+        )
 
     def _reset_idx(self, env_ids: Sequence[int]):
         """Reset environments based on specified indices.
@@ -263,16 +307,21 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
             env_ids: List of environment ids which must be reset
         """
         if env_ids is None or isinstance(env_ids, slice):
-            env_ids = torch.arange(self.num_envs, device=self.device)[slice(None) if env_ids is None else env_ids]
+            env_ids = torch.arange(self.num_envs, device=self.device)[
+                slice(None) if env_ids is None else env_ids
+            ]
         # update the curriculum for environments that need a reset
-        training_env_ids = self.env_data.combine_index(env_ids, self.env_data.is_training_env)
+        training_env_ids = self.env_data.combine_index(
+            env_ids, self.env_data.is_training_env
+        )
         self.curriculum_manager.compute(env_ids=training_env_ids)
         # self.env_data.reset(env_ids=env_ids)
         # reset the init positions of the agents
         self.init_pos_manager.re_sample_init_pos(env_ids=training_env_ids)
         self.env_data.reset(env_ids=env_ids)
         self.agents.set_agents_default_pos(
-            self.init_pos_manager.blue_default_pos, self.init_pos_manager.red_default_pos
+            self.init_pos_manager.blue_default_pos,
+            self.init_pos_manager.red_default_pos,
         )
         self.ball.set_ball_default_pos(self.init_pos_manager.ball_default_pos)
         self.agents.reset(env_ids)
@@ -282,7 +331,9 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         # apply events such as randomizations for environments that need a reset
         if "reset" in self.event_manager.available_modes:
             env_step_count = self._sim_step_counter // self.cfg.decimation
-            self.event_manager.apply(mode="reset", env_ids=env_ids, global_env_step_count=env_step_count)
+            self.event_manager.apply(
+                mode="reset", env_ids=env_ids, global_env_step_count=env_step_count
+            )
 
         # iterate over all managers and reset them
         # this returns a dictionary of information which is stored in the extras
