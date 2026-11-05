@@ -16,7 +16,7 @@ viser = ["isaaclab[viser]==3.0.0"]
 wandb = ["isaaclab[wandb]==3.0.0"]
 
 [dependency-groups]
-dev = ["pytest>=8", "pre-commit>=4"]
+dev = ["pytest>=8", "pre-commit>=4", "ruff>=0.17.3"]
 
 [tool.uv]
 package = false
@@ -110,7 +110,7 @@ known_isaaclabparty = [
     "isaaclab_tasks",
     "isaaclab_assets",
     "isaaclab_mimic",
-    "isaaclab_rl"
+    "isaaclab_rl",
 ]
 
 # Modify the following to include the package names of your first-party code
@@ -119,13 +119,7 @@ known_local_folder = "config"
 
 [tool.pyright]
 
-exclude = [
-    "**/__pycache__",
-    "**/docs",
-    "**/logs",
-    ".git",
-    ".vscode",
-]
+exclude = ["**/__pycache__", "**/docs", "**/logs", ".git", ".vscode"]
 
 typeCheckingMode = "basic"
 pythonVersion = "3.12"
