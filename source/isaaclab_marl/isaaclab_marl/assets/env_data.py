@@ -14,12 +14,17 @@
 
 from __future__ import annotations
 
-import torch
 from typing import TYPE_CHECKING
 
+import torch
 from isaaclab.utils import configclass
 
-from isaaclab_marl.config import APPLY_RANDOMIZATION, FIELD_LEVEL_SETTINGS, GOAL_LEVEL_SETTINGS, KICK_MODEL
+from isaaclab_marl.config import (
+    APPLY_RANDOMIZATION,
+    FIELD_LEVEL_SETTINGS,
+    GOAL_LEVEL_SETTINGS,
+    KICK_MODEL,
+)
 
 if TYPE_CHECKING:
     from torch import Tensor
@@ -78,7 +83,10 @@ class SoccerGameCfg:
 
     # 0 for no control, 1 for policy, 2 for policy replay, 3 for bots
     default_control = [1, 2]  # blue, red agents
-    agent_id_control = None  # [[1, 1 ... ],[2, 2 ...]] default if not set
+    agent_id_control = [
+        [1, 3, 3],
+        [3, 3, 3],
+    ]  # [[1, 1 ... ],[2, 2 ...]] default if not set
 
     eval_env_ratio = 0.15
 
@@ -94,7 +102,8 @@ class SoccerGameCfg:
     def __post_init__(self):
         if not self.agent_id_control:
             self.agent_id_control = [
-                [control for _ in range(self.num_agents_per_team)] for control in self.default_control
+                [control for _ in range(self.num_agents_per_team)]
+                for control in self.default_control
             ]
 
 
@@ -115,7 +124,9 @@ class EnvCoreData:
         self.env_base_shape = (self.num_envs,)
         self.team_base_shape = (self.num_envs, self.num_teams)
         self.agent_base_shape = self.team_base_shape + (self.num_agents_per_team,)
-        self.agent2agent_base_shape = self.agent_base_shape + (self.num_agents_per_team,)
+        self.agent2agent_base_shape = self.agent_base_shape + (
+            self.num_agents_per_team,
+        )
 
         self.all_agent2agent_base_shape = (
             self.num_envs,
@@ -155,9 +166,14 @@ class EnvCoreData:
                     )
                 )
             elif tensor.shape == self.team_base_shape:
-                return tensor.unsqueeze(-1).expand(self.team_base_shape + (self.num_agents_per_team,))
+                return tensor.unsqueeze(-1).expand(
+                    self.team_base_shape + (self.num_agents_per_team,)
+                )
             else:
-                raise Exception(tensor.shape + " cannot be expanded or flattened into the desired shape ")
+                raise Exception(
+                    tensor.shape
+                    + " cannot be expanded or flattened into the desired shape "
+                )
 
         if flatten_type == "env":
             return expand(tensor).flatten()
@@ -190,12 +206,19 @@ class EnvCoreData:
                     )
                 )
             else:
-                raise Exception(tensor.shape + " cannot be expanded or flattened into the desired shape ")
+                raise Exception(
+                    tensor.shape
+                    + " cannot be expanded or flattened into the desired shape "
+                )
 
         if flatten_type == "env":
-            return expand_vector(tensor).reshape(self.env_flatten_base_shape + (tensor.shape[-1],))
+            return expand_vector(tensor).reshape(
+                self.env_flatten_base_shape + (tensor.shape[-1],)
+            )
         elif flatten_type == "team":
-            return expand_vector(tensor).reshape(self.team_flatten_base_shape + (tensor.shape[-1],))
+            return expand_vector(tensor).reshape(
+                self.team_flatten_base_shape + (tensor.shape[-1],)
+            )
         elif flatten_type == None:
             return expand_vector(tensor)
 
@@ -203,7 +226,9 @@ class EnvCoreData:
         if env_ids is None:
             env_ids = flag
         else:
-            env_ids_expand = torch.zeros(self.num_envs, device=self.device, dtype=torch.bool)
+            env_ids_expand = torch.zeros(
+                self.num_envs, device=self.device, dtype=torch.bool
+            )
             env_ids_expand[env_ids] = True
             env_ids = torch.logical_and(flag, env_ids_expand)
         if return_index:
@@ -228,9 +253,15 @@ class EnvData(EnvCoreData):
             ]
         ]
 
-        self.agent_ids_control = torch.tensor(self.cfg.agent_id_control, device=self.device, dtype=torch.int32)
-        self.num_training_agents_per_env = torch.sum(self.agent_ids_control.flatten() == 1).item()
-        self.num_policy_replay_agents_per_env = torch.sum(self.agent_ids_control.flatten() == 2).item()
+        self.agent_ids_control = torch.tensor(
+            self.cfg.agent_id_control, device=self.device, dtype=torch.int32
+        )
+        self.num_training_agents_per_env = torch.sum(
+            self.agent_ids_control.flatten() == 1
+        ).item()
+        self.num_policy_replay_agents_per_env = torch.sum(
+            self.agent_ids_control.flatten() == 2
+        ).item()
         self.num_bots_per_env = torch.sum(self.agent_ids_control.flatten() == 3).item()
 
         self.field_width = 3.6
@@ -238,7 +269,9 @@ class EnvData(EnvCoreData):
 
     def init_tensors(self):
         # Env base shaped tensors (N,)
-        self.is_training_env = torch.zeros(self.env_base_shape, device=self.device, dtype=bool)
+        self.is_training_env = torch.zeros(
+            self.env_base_shape, device=self.device, dtype=bool
+        )
 
         self.goal_status = torch.zeros_like(self.is_training_env, dtype=torch.int32)
 
@@ -246,32 +279,45 @@ class EnvData(EnvCoreData):
         self.goal_width = torch.zeros_like(self.is_training_env, dtype=torch.float32)
 
         # (N, 2,)
-        self.goal_post_pos = torch.zeros(self.env_base_shape + (2,), device=self.device, dtype=torch.float32)
+        self.goal_post_pos = torch.zeros(
+            self.env_base_shape + (2,), device=self.device, dtype=torch.float32
+        )
 
         # Team base shaped tensors (N, 2)
-        self.score = torch.zeros(self.team_base_shape, device=self.device, dtype=torch.int32)
+        self.score = torch.zeros(
+            self.team_base_shape, device=self.device, dtype=torch.int32
+        )
         self.accumulated_score = torch.zeros_like(self.score)
         self.active_agent_per_team = torch.zeros_like(self.score)
 
         # Agent base shaped tensors (N, 2, N_T,)
-        self.active = torch.zeros(self.agent_base_shape, device=self.device, dtype=torch.bool)
+        self.active = torch.zeros(
+            self.agent_base_shape, device=self.device, dtype=torch.bool
+        )
         self.inactive = torch.zeros_like(self.active)
         self.agent_control_type = torch.zeros_like(self.active, dtype=torch.int32)
 
         # Env flattened base shape (N * 2 * N_T,)
-        self.training_actor_index = torch.zeros(self.env_flatten_base_shape, device=self.device, dtype=torch.int32)
+        self.training_actor_index = torch.zeros(
+            self.env_flatten_base_shape, device=self.device, dtype=torch.int32
+        )
         self.eval_actor_index = torch.zeros_like(self.training_actor_index)
 
         # The tensors are filled with initial value
-        shuffled_env_index = torch.randperm(self.num_envs, device=self.device, dtype=torch.int32)
+        shuffled_env_index = torch.randperm(
+            self.num_envs, device=self.device, dtype=torch.int32
+        )
         if self.num_eval_envs == 0:
             self.is_training_env[:] = True
         else:
             self.is_training_env[shuffled_env_index[: -self.num_eval_envs]] = True
         self.is_eval_env = torch.logical_not(self.is_training_env)
 
-        for i, control_type in enumerate(self.cfg.default_control):
-            self.agent_control_type[:, i, :] = control_type
+        # for i, control_type in enumerate(self.cfg.default_control):
+        #     self.agent_control_type[:, i, :] = control_type
+
+        self.agent_control_type[:] = self.agent_ids_control
+
 
         self.regenerate_level_config(self.is_training_env)
         self.active_agent_per_team[self.is_eval_env] = torch.randint(
@@ -304,10 +350,14 @@ class EnvData(EnvCoreData):
             env_ids = ...
 
         self.field_length[env_ids] = torch.tensor(
-            [get_field_length(i) for i in self.field_curriculum_level[env_ids]], device=self.device, dtype=torch.float32
+            [get_field_length(i) for i in self.field_curriculum_level[env_ids]],
+            device=self.device,
+            dtype=torch.float32,
         )
         self.goal_width[env_ids] = torch.tensor(
-            [get_goal_width(i) for i in self.field_curriculum_level[env_ids]], device=self.device, dtype=torch.float32
+            [get_goal_width(i) for i in self.field_curriculum_level[env_ids]],
+            device=self.device,
+            dtype=torch.float32,
         )
         self.goal_post_pos[env_ids, 0] = self.field_length[env_ids] / 2
         self.goal_post_pos[env_ids, 1] = self.goal_width[env_ids] / 2
@@ -328,7 +378,9 @@ class EnvData(EnvCoreData):
         else:
             num_regenerate_env = len(env_ids.nonzero())
 
-        current_settings = self.team_size_range[min(self.team_size_curriculum_level, len(self.team_size_range) - 1)]
+        current_settings = self.team_size_range[
+            min(self.team_size_curriculum_level, len(self.team_size_range) - 1)
+        ]
         for i in range(self.num_teams):
             self.active_agent_per_team[env_ids, i] = torch.randint(
                 low=current_settings[i][0],
@@ -343,14 +395,24 @@ class EnvData(EnvCoreData):
             self.active[..., i] = self.active_agent_per_team > i
         self.inactive = torch.logical_not(self.active)
         active_train = torch.logical_and(
-            self.active.flatten(), self.expand_to_env(self.is_training_env, flatten_type="env")
+            self.active.flatten(),
+            self.expand_to_env(self.is_training_env, flatten_type="env"),
         )
-        active_eval = torch.logical_and(self.active.flatten(), self.expand_to_env(self.is_eval_env, flatten_type="env"))
+        active_eval = torch.logical_and(
+            self.active.flatten(),
+            self.expand_to_env(self.is_eval_env, flatten_type="env"),
+        )
 
         # Env flattened base shape (N * 2 * N_T,)
-        self.training_actor_index = torch.logical_and(self.agent_control_type.flatten() == 1, active_train)
-        self.eval_actor_index = torch.logical_and(self.agent_control_type.flatten() == 1, active_eval)
-        self.policy_replay_actor_index = torch.logical_and(self.agent_control_type.flatten() == 2, active_train)
+        self.training_actor_index = torch.logical_and(
+            self.agent_control_type.flatten() == 1, active_train
+        )
+        self.eval_actor_index = torch.logical_and(
+            self.agent_control_type.flatten() == 1, active_eval
+        )
+        self.policy_replay_actor_index = torch.logical_and(
+            self.agent_control_type.flatten() == 2, active_train
+        )
         self.bots_actor_index = torch.logical_or(
             torch.logical_and(self.agent_control_type.flatten() == 3, active_train),
             torch.logical_and(self.agent_control_type.flatten() != 1, active_eval),
