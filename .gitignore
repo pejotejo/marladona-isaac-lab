@@ -3,6 +3,7 @@
 **/.thumbs
 
 # Python
+.venv/
 .DS_Store
 **/*.egg-info/
 **/__pycache__/
@@ -18,6 +19,7 @@
 !.vscode
 
 # Outputs
+/wks_logs/
 **/runs/*
 **/logs/*
 **/recordings/*

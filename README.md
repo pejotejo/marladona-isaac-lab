@@ -22,54 +22,44 @@ This repository contains the multi-agent soccer environment `isaaclab_marl` and 
 
 ## Installation
 
-- Install **Isaac Lab 3.0.0**, **Isaac Sim 6.2.0.0**, and **Python 3.12** using the [3.0 installation guide](https://isaac-sim.github.io/IsaacLab/v3.0.0/source/isaaclab/installation.html). With `uv` installed, the source installation is:
+Requires **Linux x86_64** and a supported NVIDIA GPU. The environment uses Python 3.12, Isaac Lab 3.0.0 / Isaac Sim 6.2.0.0, and CUDA 13.0 with the PhysX backend. See the [system requirements](https://isaac-sim.github.io/IsaacLab/v3.0.0/source/isaaclab/installation.html).
+
+Install [uv](https://docs.astral.sh/uv/getting-started/installation/) (version 0.12.24 or newer), then clone this repository:
 
 ```bash
-git clone --branch v3.0.0 --single-branch https://github.com/isaac-sim/IsaacLab.git
-cd IsaacLab
-uv sync --extra isaacsim --extra video
-source .venv/bin/activate
-cd ..
-```
-
-This uses the tagged release's dependency versions, including PyTorch 2.11.0 with CUDA 13.0 and Warp 1.17.0. The soccer task explicitly selects Isaac Sim's **PhysX** backend. Keep this environment active for the commands below.
-
-- Clone this repository separately from the Isaac Lab installation (i.e., outside the `IsaacLab` directory):
-
-```bash
-# Option 1: HTTPS
 git clone https://github.com/leggedrobotics/marladona-isaac-lab.git
-
-# Option 2: SSH
-git clone git@github.com:leggedrobotics/marladona-isaac-lab.git
-```
-
-```bash
-# Enter the repository
 cd marladona-isaac-lab
+uv sync --locked
 ```
 
-- Using a python interpreter that has Isaac Lab installed, install the library
+Isaac Lab is installed from its release wheel; both MARL packages are editable local dependencies. No separate IsaacLab checkout is needed.
+
+The [upstream compatibility overrides](https://github.com/isaac-sim/IsaacLab/blob/v3.0.0/pyproject.toml) replace some Isaac Sim version pins, so `uv pip check` may report those mismatches.
+
+Optional extras: `viser` (browser viewer), `video` (recording), and `wandb` (logging).
+
+Start training with:
 
 ```bash
-uv pip install -e source/isaaclab_marl -e source/rsl_marl
+uv run --locked scripts/rsl_rl/train.py --task=Isaac-Soccer-v0 --headless
 ```
 
-- Verify that the extension is correctly installed by running the following command:
+For training with W&B, or a browser replay, select the corresponding extra:
 
 ```bash
-python scripts/rsl_rl/train.py --task=Isaac-Soccer-v0 --headless
+uv run --locked --extra wandb scripts/rsl_rl/train.py --task=Isaac-Soccer-v0 --headless --logger wandb
+uv run --locked --extra viser scripts/rsl_rl/play.py --task=Isaac-Soccer-Play-v0 --headless --visualizer viser
 ```
 
 On the `testing-single-humanoid` branch, each field has **one learning blue player, two scripted blue teammates, and three scripted red opponents**. PPO collects transitions only from the learning player. Team sizes stay fixed; policy replay and self-play are disabled. The existing PPO runner and neighbor observations are reused for single-agent learning.
 
 Train a new seven-output policy with:
-
+g
 ```bash
-python scripts/rsl_rl/train.py --task=Isaac-Soccer-v0 --headless
+uv run --locked scripts/rsl_rl/play.py --task=Isaac-Soccer-v0 --experiment_name=00_example_policies --load_run=24_09_28_11_56_41_3v3
 ```
 
-For a short GPU smoke test, add `--num_envs=16 --max_iterations=2`. Omit `--headless` to open the Isaac Sim viewer. `--video` uses Isaac Lab 3.0's internal video recorder. Runs are stored under `wks_logs/single_humanoid_soccer` by default.
+For a short GPU smoke test, add `--num_envs=16 --max_iterations=2` to the training command. Omit `--headless` to open the Isaac Sim viewer. `--video` uses Isaac Lab 3.0's internal video recorder. Runs are stored under `wks_logs/single_humanoid_soccer` by default.
 
 Play a trained checkpoint with the same scripted teammates and opponents:
 
@@ -105,8 +95,7 @@ Tests cover single-learner masks, seven-output PPO, motion behavior, and the mig
 To run the focused compatibility tests in the installed environment:
 
 ```bash
-uv pip install pytest
-python -m pytest -q tests
+uv run --locked --group dev python -m pytest -q tests
 ```
 
 ## Visualization Tools ## 
@@ -118,7 +107,7 @@ The framework provides a convenient GUI to visualize and compare policy behavior
 
 To start the trajectory analyser, simply run the following command: 
 ```bash
-python scripts/traj_analyser.py 
+uv run --locked scripts/traj_analyser.py
 ```
 
 <img src="docs/pngs/traj_analyser_gui.png" alt="GUI"/>
@@ -129,7 +118,7 @@ Furthermore, the GUI also supports storing highlights, which can be managed via 
 
 The GUI assumes all logs are stored inside the `wks_logs` folder. It selects only the experiment folder prefix with digits, e.g., `00_example_policies`. Make sure all runs contain a non-empty `eval_traj` folder. This should be the case for all training runs that have finished the initialization. 
 
-Note: The GUI application is built using pyqtgraph and PyQt5, so double-check your pip package version to see if the dependencies are not already auto-resolved by the setup.py.
+The GUI requires a desktop session and Qt system libraries.
 
 ### Value Function Visualizer ### 
 
@@ -139,15 +128,8 @@ The value function visualizer provides additional insight into the agent's inten
 
 ## Code formatting
 
-We have a pre-commit template to automatically format your code.
-To install pre-commit:
+Run the formatting hooks with:
 
 ```bash
-pip install pre-commit
-```
-
-Then you can run pre-commit with:
-
-```bash
-pre-commit run --all-files
+uv run --locked --group dev pre-commit run --all-files
 ```
