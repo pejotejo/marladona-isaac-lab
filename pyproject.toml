@@ -1,6 +1,64 @@
-[build-system]
-requires = ["setuptools", "toml"]
-build-backend = "setuptools.build_meta"
+[project]
+name = "marladona-isaac-lab"
+version = "0.1.0"
+description = "MARLadona soccer training with Isaac Lab 3.0 and Isaac Sim 6.2."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "isaaclab[isaacsim]==3.0.0",
+    "isaaclab-marl",
+    "rsl-marl",
+    "toml>=0.10.2",
+]
+
+[project.optional-dependencies]
+video = ["isaaclab[video]==3.0.0"]
+viser = ["isaaclab[viser]==3.0.0"]
+wandb = ["isaaclab[wandb]==3.0.0"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pre-commit>=4"]
+
+[tool.uv]
+package = false
+required-version = ">=0.12.24"
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+# Match Isaac Lab's resolution across NVIDIA's index and PyPI.
+index-strategy = "unsafe-best-match"
+# Compatibility overrides from Isaac Lab v3.0.0; dependency uv settings do not propagate.
+# https://github.com/isaac-sim/IsaacLab/blob/v3.0.0/pyproject.toml
+override-dependencies = [
+    "mujoco~=3.12.0",
+    "mujoco-warp~=3.12.0",
+    "newton[sim]==1.6.1",
+    "newton-usd-schemas>=0.5.0",
+    "usd-exchange==3.0.1",
+    "torch==2.11.0",
+    "torchvision==0.26.0",
+    "fsspec>=2026.6.0",
+    "urllib3>=2.8.0",
+]
+
+[tool.uv.sources]
+isaaclab = { index = "pypi-public" }
+isaaclab-marl = { path = "source/isaaclab_marl", editable = true }
+rsl-marl = { path = "source/rsl_marl", editable = true }
+omniverseclient = { index = "pypi-public" }
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }
+
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
+
+[[tool.uv.index]]
+name = "pypi-public"
+url = "https://pypi.org/simple"
+default = true
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
 
 [tool.isort]
 
