@@ -10,10 +10,10 @@
 from __future__ import annotations
 
 import inspect
-import numpy as np
-import torch
 from typing import TYPE_CHECKING
 
+import numpy as np
+import torch
 from isaaclab.managers.manager_base import ManagerTermBase
 from isaaclab.managers.manager_term_cfg import ObservationGroupCfg, ObservationTermCfg
 from isaaclab.managers.observation_manager import ObservationManager
@@ -212,6 +212,12 @@ class MultiAgentObservationManager(ObservationManager):
                 obs_dims = tuple(term_cfg.func(self._env, **term_cfg.params).shape)
                 hist = term_cfg.history_length if term_cfg.history_length else 1
                 if group_name in ["policy", "critic", "neighbor", "neighbor_critic"]:
+                    if term_name == "kick_state":
+                        for j in range(hist):
+                            self._group_symmetry_index[group_name].append(
+                                accumulated_obs_dim + 3 * hist + j
+                            )
+
                     if "pose" in term_name or "vel" in term_name or "pos" in term_name:
                         unit_length = (
                             2

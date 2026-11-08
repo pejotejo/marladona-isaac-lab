@@ -111,6 +111,13 @@ class ActorCriticBeta(nn.Module):
             )
         ]
 
+    @staticmethod
+    def to_motion_actions(samples):
+        commands = 2.0 * samples - 1.0
+        commands[..., 3] = samples[..., 3]
+        commands[..., 6] = samples[..., 6]
+        return commands
+
     def reset(self, dones=None):
         pass
 
@@ -168,7 +175,7 @@ class ActorCriticBeta(nn.Module):
         params = self.actor(full_observations)
         alpha, beta = self.get_beta_parameters(params)
         actions_mean = alpha / (alpha + beta)
-        return (actions_mean - 0.5) * 2.0
+        return self.to_motion_actions(actions_mean)
 
     def evaluate(self, critic_observations, **kwargs):
         critic_obs = critic_observations[:, : -self.total_num_neighbor_obs]

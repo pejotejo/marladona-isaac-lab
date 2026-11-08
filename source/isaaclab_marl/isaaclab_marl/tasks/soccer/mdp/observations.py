@@ -14,9 +14,9 @@
 
 from __future__ import annotations
 
-import torch
 from typing import TYPE_CHECKING
 
+import torch
 from isaaclab.managers import SceneEntityCfg
 
 from isaaclab_marl.utils.math_utils import mirror_agent_pose
@@ -239,3 +239,21 @@ def closest_agent_to_ball(
         env.ball.closest_agent_index,
     ] = True
     return closest_agent_to_ball.flatten()
+
+
+def kick_state(env: SoccerMARLEnv) -> torch.Tensor:
+    motion = env.action_manager.get_term("motion")
+    elapsed_fraction = motion._kick_elapsed / motion.agent_cfg.kick_timeout
+
+    state = torch.cat(
+        [
+            motion._kick_active[..., None].float(),
+            motion._kick_was_requested[..., None].float(),
+            motion._kick_target,
+            motion._kick_strength[..., None],
+            elapsed_fraction[..., None],
+        ],
+        dim=-1,
+    )
+
+    return state.view(-1, 6)

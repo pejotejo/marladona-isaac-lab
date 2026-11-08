@@ -11,9 +11,9 @@
 
 import argparse
 import multiprocessing as mp
+
 import numpy as np
 import torch
-
 from isaaclab.app import AppLauncher
 
 # local imports
@@ -78,23 +78,22 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-import gymnasium as gym
 import os
-import psutil
 from typing import TYPE_CHECKING
 
-from rsl_marl.runners import OnPolicyRunner
-from rsl_marl.utils.custom_vecenv_wrapper import CustomVecEnvWrapper
-
-from isaaclab.envs import DirectMARLEnv, VideoRecorderCfg, multi_agent_to_single_agent
-from isaaclab.utils.dict import print_dict
-from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
-from isaaclab_visualizers.kit import KitVisualizerCfg
+import gymnasium as gym
 
 # Import extensions to set up environment tasks
 import isaaclab_marl.tasks  # noqa: F401
+import psutil
+from isaaclab.envs import DirectMARLEnv, VideoRecorderCfg, multi_agent_to_single_agent
+from isaaclab.utils.dict import print_dict
 from isaaclab_marl.config import WKS_LOGS_DIR
 from isaaclab_marl.utils.value_plotter import RESOLUTION, ValuePlotter
+from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
+from isaaclab_visualizers.kit import KitVisualizerCfg
+from rsl_marl.runners import OnPolicyRunner
+from rsl_marl.utils.custom_vecenv_wrapper import CustomVecEnvWrapper
 
 if TYPE_CHECKING:
     from isaaclab_marl.tasks.soccer.agents.soccer_marl_ppo_runner_cfg import (
@@ -241,7 +240,22 @@ def main():
             # agent stepping
             obs = torch.cat([obs_dict["policy"], obs_dict["neighbor"]], dim=1)
 
-            actions = policy(obs)
+            actions = torch.zeros(
+                env.num_envs * env_data.num_agents_per_env,
+                env.num_actions,
+                device=env.device,
+            )
+
+            actions[env_data.training_actor_index] = policy(
+                obs[env_data.training_actor_index]
+            )
+
+            actions[env_data.bots_actor_index] = ppo_runner.bot_policy.act(
+                obs_dict["bots"],
+                actions,
+                env_data.bots_actor_index,
+                configs=["keeper"] + ["player"] * (env_data.num_agents_per_team - 1),
+            )
 
             obs_dict, _, _, _ = env.step(actions)
         if args_cli.video:

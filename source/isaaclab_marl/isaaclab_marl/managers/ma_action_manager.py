@@ -14,24 +14,23 @@
 
 from __future__ import annotations
 
-import torch
 from collections.abc import Sequence
-from prettytable import PrettyTable
 from typing import TYPE_CHECKING
 
+import torch
 from isaaclab.assets.articulation import Articulation
 from isaaclab.managers.action_manager import ActionTerm
 from isaaclab.managers.manager_base import ManagerBase
+from prettytable import PrettyTable
 
 if TYPE_CHECKING:
     from isaaclab.envs import ManagerBasedEnv
+    from isaaclab_marl.assets.agents import Agents
     from isaaclab_marl.assets.env_data import SoccerAgentsCfg
     from isaaclab_marl.tasks.soccer.soccer_marl_env import SoccerMARLEnv
-    from isaaclab_marl.assets.agents import Agents
 
 from isaaclab.managers.action_manager import ActionTermCfg
 from isaaclab.utils.math import quat_apply_inverse
-
 from isaaclab_marl.utils.math_utils import rotate2d
 
 
@@ -162,6 +161,241 @@ class BaseMovementAction(ActionTerm, MultiAgentAction):
         inactive_agents = self._env.env_data.inactive.view(self.num_envs, -1)
         self._force[inactive_agents] = 0
         self._torque[inactive_agents] = 0
+
+
+class SoccerMotionAction(BaseMovementAction):
+    @property
+    def action_dim(self) -> int:
+        return 7
+
+    def __init__(self, cfg: ActionTermCfg, env: SoccerMARLEnv) -> None:
+        super().__init__(cfg, env)
+
+        self.ball = env.ball
+        shape = (self.num_envs, self.num_agents_per_env)
+        self._kick_active = torch.zeros(shape, dtype=torch.bool, device=self.device)
+        self._kick_was_requested = torch.zeros(
+            shape, dtype=torch.bool, device=self.device
+        )
+        self._kick_target = torch.zeros((*shape, 2), device=self.device)
+        self._kick_strength = torch.zeros(shape, device=self.device)
+        self._kick_elapsed = torch.zeros(shape, device=self.device)
+
+    def process_actions(self, actions: torch.Tensor):
+        if not torch.isfinite(actions).all():
+            raise ValueError("Motion actions contain NaN or infinity")
+
+        super().process_actions(actions)
+        commands = self._processed_actions
+
+        requested = commands[..., 3] > 0.5
+        available = ~self._env.env_data.inactive.view(
+            self.num_envs, self.num_agents_per_env
+        )
+
+        new_kick = (
+            requested
+            & ~self._kick_was_requested
+            & ~self._kick_active
+            & available
+            & (commands[..., 6] > 0.0)
+        )
+
+        self._kick_target[new_kick] = commands[..., 4:6][new_kick].clamp(-1.0, 1.0)
+        self._kick_strength[new_kick] = commands[..., 6][new_kick].clamp(0.0, 1.0)
+        self._kick_active[new_kick] = True
+        self._kick_was_requested[:] = requested
+        self._kick_elapsed[new_kick] = 0.0
+
+    def reset(self, env_ids: Sequence[int] | None = None) -> None:
+        if env_ids is None:
+            env_ids = slice(None)
+
+        super().reset(env_ids)
+
+        self._processed_actions[env_ids] = 0.0
+        self._kick_active[env_ids] = False
+        self._kick_was_requested[env_ids] = False
+        self._kick_target[env_ids] = 0.0
+        self._kick_strength[env_ids] = 0.0
+        self._kick_elapsed[env_ids] = 0.0
+
+    def _get_kick_geometry(self):
+        data = self._env.env_data
+        target = self._kick_target.clone()
+        target[..., 0] *= data.field_length[:, None] / 2
+        target[..., 1] *= data.field_width / 2
+
+        # Convert the second team's coordinates into physical field coordinates.
+        target[:, self.num_agents_per_team :] *= -1
+
+        ball = self.ball.base_pos_w[:, None, :]
+        delta = target - ball
+
+        min_target_distance = 1e-3
+
+        distance = delta.norm(dim=-1, keepdim=True)
+        direction = delta / distance.clamp(min_target_distance)
+
+        stand_off = 0.8 * self.ball.ball_cfg.kick_margin
+        stand_position = ball - stand_off * direction
+
+        valid_target = distance[..., 0] > min_target_distance
+
+        return direction, stand_position, valid_target
+
+    def _get_approach_position(self, pose, direction, stand_position):
+        ball = self.ball.base_pos_w[:, None, :]
+        relative = pose[..., :2] - ball
+
+        sideways = torch.stack([-direction[..., 1], direction[..., 0]], dim=-1)
+        forward = (relative * direction).sum(dim=-1)
+        lateral = (relative * sideways).sum(dim=-1)
+        angle = torch.atan2(lateral, forward)
+
+        route_radius = 0.35
+        waypoint_step = torch.pi / 4
+        rear_half_angle = torch.pi / 4
+
+        turn_side = torch.where(lateral >= 0, 1.0, -1.0)
+        waypoint_angle = angle + turn_side * waypoint_step
+        waypoint = ball + route_radius * (
+            torch.cos(waypoint_angle)[..., None] * direction
+            + torch.sin(waypoint_angle)[..., None] * sideways
+        )
+
+        needs_route = angle.abs() < torch.pi - rear_half_angle
+        approach_position = torch.where(
+            needs_route[..., None], waypoint, stand_position
+        )
+        return approach_position
+
+    def _get_approach_commands(self, pose, direction, approach_position):
+        position_error_w = approach_position - pose[..., :2]
+        position_error_b = rotate2d(
+            position_error_w[..., 0],
+            position_error_w[..., 1],
+            pose[..., 2],
+        )
+
+        target_yaw = torch.atan2(direction[..., 1], direction[..., 0])
+        yaw_error = target_yaw - pose[..., 2]
+        yaw_error = torch.atan2(
+            torch.sin(yaw_error), torch.cos(yaw_error)
+        )  # wrapped around [-pi, pi]
+
+        position_gain = 2.0
+        rotation_gain = 2.0
+
+        desired_velocity_b = position_gain * position_error_b
+        desired_yaw_rate = rotation_gain * yaw_error
+
+        limits = self.agent_cfg.cmd_speed_limit
+
+        automatic = torch.empty_like(self._processed_actions[..., :3])
+
+        automatic[..., 0] = torch.where(
+            desired_velocity_b[..., 0] >= 0,
+            desired_velocity_b[..., 0] / limits[0][0],
+            desired_velocity_b[..., 0] / (-limits[0][1]),
+        )
+        automatic[..., 1] = desired_velocity_b[..., 1] / limits[1][0]
+        automatic[..., 2] = desired_yaw_rate / limits[2][0]
+
+        return automatic, yaw_error
+
+    def _select_walking_commands(self, automatic, valid_target):
+        available = ~self._env.env_data.inactive.view(
+            self.num_envs, self.num_agents_per_env
+        )
+        self._kick_active &= valid_target & available
+
+        walking = self._processed_actions[..., :3]
+        walking[:] = self._raw_actions[..., :3] * self._scale + self._offset
+        walking[self._kick_active] = automatic[self._kick_active]
+
+    def _get_kick_ready(self, yaw_error):
+        ball_pos_b = self.agents.ball_pos_b.view(
+            self.num_envs, self.num_agents_per_env, 2
+        )
+
+        lateral_tolerance = 0.04
+        yaw_tolerance = 0.12
+
+        return (
+            self._kick_active
+            & (ball_pos_b[..., 0] > 0.0)
+            & (ball_pos_b.norm(dim=-1) < self.ball.ball_cfg.kick_margin)
+            & (ball_pos_b[..., 1].abs() < lateral_tolerance)
+            & (yaw_error.abs() < yaw_tolerance)
+        )
+
+    def _select_kickers(self, ready):
+        ball_pos_b = self.agents.ball_pos_b.view(
+            self.num_envs, self.num_agents_per_env, 2
+        )
+        distance = ball_pos_b.norm(dim=-1)
+        distance = distance.masked_fill(~ready, torch.inf)
+        agent_ids = distance.argmin(dim=1)
+        env_ids = torch.arange(self.num_envs, device=self.device)[ready.any(dim=1)]
+
+        return env_ids, agent_ids[env_ids]
+
+    def _execute_kicks(self, ready_to_kick, direction):
+        env_ids, agent_ids = self._select_kickers(ready_to_kick)
+
+        if env_ids.numel() == 0:
+            return
+
+        speed = (
+            self._kick_strength[env_ids, agent_ids] * self.ball.ball_cfg.max_kick_speed
+        )
+        velocity = self.ball.asset.data.root_state_w.torch[env_ids, 7:].clone()
+        velocity[:, :2] = direction[env_ids, agent_ids] * speed[:, None]
+
+        self.ball.asset.write_root_com_velocity_to_sim_index(
+            root_velocity=velocity,
+            env_ids=env_ids,
+        )
+
+        self._kick_active[env_ids, agent_ids] = False
+
+    def _apply_ball_friction(self):
+        asset = self.ball.asset
+
+        torque = (
+            -asset.data.root_ang_vel_b.torch * self.ball.rolling_friction
+        ).unsqueeze(1)
+
+        asset.permanent_wrench_composer.set_forces_and_torques_index(
+            forces=torch.zeros_like(torque),
+            torques=torque,
+        )
+
+    def _update_kick_timeout(self):
+        self._kick_elapsed[self._kick_active] += self._env.physics_dt
+
+        timed_out = self._kick_elapsed >= self.agent_cfg.kick_timeout
+        self._kick_active[timed_out] = False
+
+        self._kick_elapsed[~self._kick_active] = 0.0
+
+    def apply_actions(self):
+        direction, stand_position, valid_target = self._get_kick_geometry()
+
+        pose = self.agents.base_pose_w.view(self.num_envs, self.num_agents_per_env, 3)
+
+        approach_position = self._get_approach_position(pose, direction, stand_position)
+        automatic, yaw_error = self._get_approach_commands(
+            pose, direction, approach_position
+        )
+        self._select_walking_commands(automatic, valid_target)
+        ready_to_kick = self._get_kick_ready(yaw_error)
+        self._execute_kicks(ready_to_kick, direction)
+
+        super().apply_actions()
+        self._apply_ball_friction()
+        self._update_kick_timeout()  # TODO change to hystresis
 
 
 class BallControlAction(ActionTerm, MultiAgentAction):
@@ -446,8 +680,13 @@ class MultiAgentActionManager(ManagerBase, MultiAgentAction):
         if env_ids is None:
             env_ids = slice(None)
         # reset the action history
-        self._prev_action[env_ids] = 0.0
-        self._action[env_ids] = 0.0
+        shape = (
+            self.num_envs,
+            self.num_agents_per_env,
+            self.total_action_dim,
+        )
+        self._prev_action.view(shape)[env_ids] = 0.0
+        self._action.view(shape)[env_ids] = 0.0
         # reset all action terms
         for term in self._terms.values():
             term.reset(env_ids=env_ids)

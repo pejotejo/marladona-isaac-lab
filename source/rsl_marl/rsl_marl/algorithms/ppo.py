@@ -44,7 +44,7 @@ class PPO:
 
         self.symmetry_cfg = symmetry_cfg
         self.obs_mirror_index = None
-        self.action_mirror_index = torch.tensor([1, 2, 4], device=self.device)
+        self.action_mirror_index = torch.tensor([1, 2, 5], device=self.device)
 
         # PPO components
         self.actor_critic = actor_critic
@@ -114,7 +114,7 @@ class PPO:
         self.transition.observations = obs
         self.transition.critic_observations = critic_obs
         if isinstance(self.actor_critic, ActorCriticBeta):
-            return (self.transition.actions - 0.5) * 2.0
+            return self.actor_critic.to_motion_actions(self.transition.actions)
         else:
             return self.transition.actions
 

@@ -51,6 +51,7 @@ class SoccerBallCfg:
     kick_force_gain = 0.5
     kick_area = "default"  # default, fullcircle
     kick_margin = 0.2
+    max_kick_speed = 1.0
 
 
 @configclass
@@ -73,13 +74,14 @@ class SoccerAgentsCfg:
         [0.25, -0.25],
         [2.5, -2.5],
     ]  # action limit 0, 1, 2
+    kick_timeout = 10.0
 
 
 @configclass
 class SoccerGameCfg:
     num_teams: int = 2  # 2 teams
     num_agents_per_team: int = 3  # max 5 players per team
-    num_actions = 5
+    num_actions = 7
 
     # 0 for no control, 1 for policy, 2 for policy replay, 3 for bots
     default_control = [1, 2]  # blue, red agents
