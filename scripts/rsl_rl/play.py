@@ -19,7 +19,6 @@ from isaaclab.app import AppLauncher
 # local imports
 import cli_args  # isort: skip
 
-
 VISUALIZE_VALUE_FUN = True
 NUM_OF_PLAYERS_TO_VISUALIZE = 3
 VISUALIZATION_INTERVAL = 2
@@ -88,7 +87,7 @@ import isaaclab_marl.tasks  # noqa: F401
 import psutil
 from isaaclab.envs import DirectMARLEnv, VideoRecorderCfg, multi_agent_to_single_agent
 from isaaclab.utils.dict import print_dict
-from isaaclab_marl.config import WKS_LOGS_DIR
+from isaaclab_marl.config import WKS_LOGS_DIR, load_parameters
 from isaaclab_marl.utils.value_plotter import RESOLUTION, ValuePlotter
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from isaaclab_visualizers.kit import KitVisualizerCfg
@@ -156,10 +155,24 @@ def main():
         args_cli.task, args_cli
     )
 
+    parameters = load_parameters()
+    env_cfg.from_dict(parameters["environment"])
+    agent_cfg.from_dict(parameters["training"])
+
+    agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
+
+    if args_cli.num_envs is not None:
+        env_cfg.scene.num_envs = args_cli.num_envs
+
+    if args_cli.device is not None:
+        env_cfg.sim.device = args_cli.device
+
     agent_cfg.policy_replay.dynamic_generate_replay_level = False
 
     # specify directory for logging experiments
-    log_root_path = os.path.join(WKS_LOGS_DIR, args_cli.experiment_name)
+    log_root_path = os.path.join(
+        WKS_LOGS_DIR, args_cli.experiment_name or agent_cfg.experiment_name
+    )
     log_root_path = os.path.abspath(log_root_path)
     print(f"[INFO] Loading experiment from directory: {log_root_path}")
     resume_path = get_checkpoint_path(

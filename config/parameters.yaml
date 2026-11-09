@@ -1,0 +1,70 @@
+environment:
+  episode_length_s: 30.0
+
+  sim:
+    dt: 0.02
+
+  soccer_game:
+    agents:
+      cmd_speed_limit:
+        - [0.35, -0.25]  # forward/backward, m/s
+        - [0.25, -0.25]  # sideways, m/s
+        - [2.5, -2.5]    # rotation, rad/s
+      translation_force_d_gain: 10
+      rotation_torque_d_gain: 0.2
+      kick_timeout: 10.0  # seconds
+
+      kick_position_gain: 2.0          # 1/s
+      kick_rotation_gain: 2.0          # 1/s
+      kick_route_radius: 0.35          # metres
+      kick_waypoint_step: 0.7853981633974483   # pi/4 radians
+      kick_rear_half_angle: 0.7853981633974483 # pi/4 radians
+      kick_stand_off_ratio: 0.8
+      kick_lateral_tolerance: 0.04     # metres
+      kick_yaw_tolerance: 0.12         # radians
+      kick_min_target_distance: 0.001  # metres
+
+
+    ball:
+      ownership_radius: 0.25
+      kick_margin: 0.2
+      max_kick_speed: 1.0  # m/s
+      randomize_friction: true
+
+  rewards:
+    score:
+      weight: 100.0
+    ball_outside_field_penalty:
+      weight: 1.0
+    collision_penalty:
+      weight: 1.0
+      params:
+        collision_radius_agent: 0.2
+        collision_radius_goal_post: 0.17
+    vel_2_ball:
+      weight: 0.5
+    vel_ball_2_goal:
+      weight: 2.0
+    ball_direction:
+      weight: 0.5
+      params:
+        std: 0.4
+
+training:
+  seed: 42
+  num_steps_per_env: 48
+  max_iterations: 10000
+
+  policy:
+    actor_hidden_dims: [128, 128, 128]
+    critic_hidden_dims: [128, 128, 128]
+
+  algorithm:
+    learning_rate: 0.001
+    gamma: 0.99
+    lam: 0.95
+    entropy_coef: 0.003
+    num_learning_epochs: 5
+    num_mini_batches: 4
+    clip_param: 0.2
+    max_grad_norm: 1.0

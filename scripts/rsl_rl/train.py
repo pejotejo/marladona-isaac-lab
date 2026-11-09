@@ -103,7 +103,7 @@ from isaaclab_visualizers.kit import KitVisualizerCfg
 
 # Import extensions to set up environment tasks
 import isaaclab_marl.tasks  # noqa: F401
-from isaaclab_marl.config import WKS_LOGS_DIR
+from isaaclab_marl.config import WKS_LOGS_DIR, load_parameters
 from isaaclab_marl.tasks.soccer.agents.soccer_marl_ppo_runner_cfg import (
     SoccerMARLPPORunnerCfg,
 )
@@ -125,6 +125,11 @@ def main(
     agent_cfg: SoccerMARLPPORunnerCfg,
 ):
     """Train with RSL-RL agent."""
+
+    parameters = load_parameters()
+    env_cfg.from_dict(parameters["environment"])
+    agent_cfg.from_dict(parameters["training"])
+
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
     env_cfg.scene.num_envs = (

@@ -14,6 +14,7 @@
 
 import numpy as np
 import os
+import yaml
 
 MARL_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 REPO_ROOT_DIR = os.path.dirname(os.path.dirname(MARL_ROOT_DIR))
@@ -39,3 +40,18 @@ BALL_MAX_SPEED = 1.5 / SIMULATION2D_SCALER * SIMULATION2D_TIME_FACTOR
 KICK_MODEL = "default"  # "default" or "simulation2d"
 MIRROR_BALL_INIT_POS = False
 PREPROCESS_NET_TYPE = "neighbor_net"  # "attention" or "neighbor_net"
+
+def load_parameters():
+    path = os.path.join(REPO_ROOT_DIR, "config", "parameters.yaml")
+
+    with open(path, encoding="utf-8") as file:
+        data = yaml.safe_load(file)
+
+    if not isinstance(data, dict):
+        raise ValueError("parameters.yaml must contain a mapping")
+
+    for section in ("environment", "training"):
+        if not isinstance(data.get(section), dict):
+                    raise ValueError(f"'{section}' must contain a mapping")
+
+    return data

@@ -232,12 +232,12 @@ class SoccerMotionAction(BaseMovementAction):
         ball = self.ball.base_pos_w[:, None, :]
         delta = target - ball
 
-        min_target_distance = 1e-3
+        min_target_distance = self.agent_cfg.kick_min_target_distance
 
         distance = delta.norm(dim=-1, keepdim=True)
         direction = delta / distance.clamp(min_target_distance)
 
-        stand_off = 0.8 * self.ball.ball_cfg.kick_margin
+        stand_off = self.agent_cfg.kick_stand_off_ratio * self.ball.ball_cfg.kick_margin
         stand_position = ball - stand_off * direction
 
         valid_target = distance[..., 0] > min_target_distance
@@ -253,9 +253,9 @@ class SoccerMotionAction(BaseMovementAction):
         lateral = (relative * sideways).sum(dim=-1)
         angle = torch.atan2(lateral, forward)
 
-        route_radius = 0.35
-        waypoint_step = torch.pi / 4
-        rear_half_angle = torch.pi / 4
+        route_radius = self.agent_cfg.kick_route_radius
+        waypoint_step = self.agent_cfg.kick_waypoint_step
+        rear_half_angle = self.agent_cfg.kick_rear_half_angle
 
         turn_side = torch.where(lateral >= 0, 1.0, -1.0)
         waypoint_angle = angle + turn_side * waypoint_step
@@ -284,11 +284,8 @@ class SoccerMotionAction(BaseMovementAction):
             torch.sin(yaw_error), torch.cos(yaw_error)
         )  # wrapped around [-pi, pi]
 
-        position_gain = 2.0
-        rotation_gain = 2.0
-
-        desired_velocity_b = position_gain * position_error_b
-        desired_yaw_rate = rotation_gain * yaw_error
+        desired_velocity_b = self.agent_cfg.kick_position_gain * position_error_b
+        desired_yaw_rate = self.agent_cfg.kick_rotation_gain * yaw_error
 
         limits = self.agent_cfg.cmd_speed_limit
 
@@ -319,15 +316,12 @@ class SoccerMotionAction(BaseMovementAction):
             self.num_envs, self.num_agents_per_env, 2
         )
 
-        lateral_tolerance = 0.04
-        yaw_tolerance = 0.12
-
         return (
             self._kick_active
             & (ball_pos_b[..., 0] > 0.0)
             & (ball_pos_b.norm(dim=-1) < self.ball.ball_cfg.kick_margin)
-            & (ball_pos_b[..., 1].abs() < lateral_tolerance)
-            & (yaw_error.abs() < yaw_tolerance)
+            & (ball_pos_b[..., 1].abs() < self.agent_cfg.kick_lateral_tolerance)
+            & (yaw_error.abs() < self.agent_cfg.kick_yaw_tolerance)
         )
 
     def _select_kickers(self, ready):

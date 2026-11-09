@@ -76,6 +76,17 @@ class SoccerAgentsCfg:
     ]  # action limit 0, 1, 2
     kick_timeout = 10.0
 
+    kick_position_gain = 2.0
+    kick_rotation_gain = 2.0
+    kick_route_radius = 0.35
+    kick_waypoint_step = torch.pi / 4
+    kick_rear_half_angle = torch.pi / 4
+    kick_stand_off_ratio = 0.8
+    kick_lateral_tolerance = 0.04
+    kick_yaw_tolerance = 0.12
+    kick_min_target_distance = 0.001
+
+
 
 @configclass
 class SoccerGameCfg:
