@@ -19,7 +19,7 @@ from isaaclab.app import AppLauncher
 # local imports
 import cli_args  # isort: skip
 
-VISUALIZE_VALUE_FUN = True
+VISUALIZE_VALUE_FUN = False
 NUM_OF_PLAYERS_TO_VISUALIZE = 3
 VISUALIZATION_INTERVAL = 2
 PLOT_VALUE_FUNC_LIST = ["base_own_pose_w", "ball_pos_w"]
