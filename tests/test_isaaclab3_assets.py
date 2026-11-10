@@ -13,12 +13,13 @@ from isaaclab.utils.math import quat_apply, quat_from_euler_xyz
 from isaaclab.utils.warp import ProxyArray
 from isaaclab.utils.wrench_composer import WrenchComposer
 from isaaclab_marl.assets.agents import Agents
-from isaaclab_marl.assets.env_data import EnvCoreData, SoccerGameCfg
+from isaaclab_marl.assets.env_data import EnvCoreData
 from isaaclab_marl.assets.soccer_ball import SoccerBall
 from isaaclab_marl.managers.ma_action_manager import (
     BallControlAction,
     BaseMovementAction,
 )
+from isaaclab_marl.soccer_game_cfg import SoccerGameCfg
 
 
 def proxy(value):

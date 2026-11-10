@@ -18,10 +18,10 @@ from isaaclab_marl.utils.math_utils import mirror_agent_pose
 
 
 class InitPosManager:
-    def __init__(self, num_envs, num_agents_per_team, device):
-        self.random_sampling = True
-        mirror_init_pos = False
-        self.init_rot_noise = torch.pi
+    def __init__(self, num_envs, num_agents_per_team, device, cfg):
+        self.random_sampling = cfg.random_sampling
+        mirror_init_pos = cfg.mirror_init_pos
+        self.init_rot_noise = cfg.init_rot_noise
         self.blue_default_pos_range = torch.tensor(
             [
                 [[0.1, 0.95], [-0.5, 0.5], [-self.init_rot_noise, self.init_rot_noise]],

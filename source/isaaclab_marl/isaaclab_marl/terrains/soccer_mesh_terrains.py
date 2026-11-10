@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import trimesh
 from typing import TYPE_CHECKING
 
-from isaaclab_marl.config import FIELD_LEVEL_SETTINGS, GOAL_LEVEL_SETTINGS, SCALING
+import numpy as np
+import trimesh
 
 if TYPE_CHECKING:
     from .soccer_terrain_cfg import SubTerrainsCfg, TerrainCfg
@@ -74,9 +73,14 @@ def cylinder_mesh(pos, radius=0.049, height=0.79):
 def soccer_field(difficulty, cfg: "TerrainCfg"):
     border_size = 0.01
     difficulty = int(difficulty * len(cfg.level_settings))
-    field_length = FIELD_LEVEL_SETTINGS[cfg.level_settings[difficulty][0]]
-    field_width = 7.4 * SCALING
-    goal_width = GOAL_LEVEL_SETTINGS[cfg.level_settings[difficulty][1]]
+
+    field_cfg = cfg.field
+    length_index, goal_index = cfg.level_settings[difficulty]
+
+    field_length = field_cfg.length_levels[length_index] * field_cfg.scale
+    field_width = field_cfg.outer_width * field_cfg.scale
+    goal_width = field_cfg.goal_width_levels[goal_index] * field_cfg.scale
+
     border_lenght = field_length / 9 * 10.4
     pos = [0, 0, 0]
     meshes = []

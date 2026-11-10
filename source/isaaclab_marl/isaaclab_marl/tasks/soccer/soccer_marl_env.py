@@ -7,13 +7,13 @@
 
 from __future__ import annotations
 
-import gymnasium as gym
 import math
-import numpy as np
-import torch
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 
+import gymnasium as gym
+import numpy as np
+import torch
 from isaaclab.envs.manager_based_rl_env import ManagerBasedRLEnv
 from isaaclab.managers import CommandManager, CurriculumManager, TerminationManager
 
@@ -102,13 +102,16 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
             self.scene["ball"],
         )
         self.init_pos_manager = InitPosManager(
-            self.num_envs, self.cfg.soccer_game.num_agents_per_team, device=self.device
+            self.num_envs,
+            self.cfg.soccer_game.num_agents_per_team,
+            device=self.device,
+            cfg=self.cfg.soccer_game.spawn,
         )
 
         self.command_manager: CommandManager = CommandManager(self.cfg.commands, self)
         print("[INFO] Command Manager: ", self.command_manager)
 
-        # call the parent class to load the managers for observations and actions.
+        # call the parent class to load the managers for observationsi and actions.
         super().load_managers()
 
         # prepare the managers

@@ -17,107 +17,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import torch
-from isaaclab.utils import configclass
 
-from isaaclab_marl.config import (
-    APPLY_RANDOMIZATION,
-    FIELD_LEVEL_SETTINGS,
-    GOAL_LEVEL_SETTINGS,
-    KICK_MODEL,
-)
+from isaaclab_marl.soccer_game_cfg import SoccerGameCfg
 
 if TYPE_CHECKING:
     from torch import Tensor
-
-
-@configclass
-class SoccerBallCfg:
-    ownership_radius = 0.25
-    reset_type = "no_speed"  # "no_speed" or "keep_speed"
-    randomize_friction = True
-
-    if APPLY_RANDOMIZATION:
-        roll_friction_range = (0.00006, 0.0001)
-        friction_range = (0.0, 0.5)
-    else:
-        roll_friction_range = (0.00005, 0.00005)
-        friction_range = (0.25, 0.25)
-
-    if KICK_MODEL == "default":
-        kick_manipulation_type = "force"  # "force" or "velocity"
-    else:
-        kick_manipulation_type = "velocity"
-
-    kick_force_gain = 0.5
-    kick_area = "default"  # default, fullcircle
-    kick_margin = 0.2
-    max_kick_speed = 1.0
-
-
-@configclass
-class SoccerAgentsCfg:
-    if APPLY_RANDOMIZATION:
-        friction_range = (0.0, 0.2)
-    else:
-        friction_range = (0.1, 0.1)
-
-    translation_shape = "ellipse"  # "ellipse" or "square"
-
-    position_control_pid_gain = [20.0, 0.2]
-    velocity_control_pid_gain = [20.0, 0.2]
-    velocity_p_gain = 3
-    translation_force_d_gain = 10
-    rotation_torque_d_gain = 0.2
-
-    cmd_speed_limit = [
-        [0.35, -0.25],
-        [0.25, -0.25],
-        [2.5, -2.5],
-    ]  # action limit 0, 1, 2
-    kick_timeout = 10.0
-
-    kick_position_gain = 2.0
-    kick_rotation_gain = 2.0
-    kick_route_radius = 0.35
-    kick_waypoint_step = torch.pi / 4
-    kick_rear_half_angle = torch.pi / 4
-    kick_stand_off_ratio = 0.8
-    kick_lateral_tolerance = 0.04
-    kick_yaw_tolerance = 0.12
-    kick_min_target_distance = 0.001
-
-
-
-@configclass
-class SoccerGameCfg:
-    num_teams: int = 2  # 2 teams
-    num_agents_per_team: int = 3  # max 5 players per team
-    num_actions = 7
-
-    # 0 for no control, 1 for policy, 2 for policy replay, 3 for bots
-    default_control = [1, 2]  # blue, red agents
-    agent_id_control = [
-        [1, 3, 3],
-        [3, 3, 3],
-    ]  # [[1, 1 ... ],[2, 2 ...]] default if not set
-
-    eval_env_ratio = 0.15
-
-    num_agents_range = [1, num_agents_per_team]
-
-    level_settings = [[2, 2], [3, 2], [3, 3], [3, 4]]
-
-    ball = SoccerBallCfg()
-    agents = SoccerAgentsCfg()
-
-    create_field_visuals = False
-
-    def __post_init__(self):
-        if not self.agent_id_control:
-            self.agent_id_control = [
-                [control for _ in range(self.num_agents_per_team)]
-                for control in self.default_control
-            ]
 
 
 class EnvCoreData:
@@ -277,7 +181,8 @@ class EnvData(EnvCoreData):
         ).item()
         self.num_bots_per_env = torch.sum(self.agent_ids_control.flatten() == 3).item()
 
-        self.field_width = 3.6
+        self.field_width = self.cfg.field.width * self.cfg.field.scale
+
         self.init_tensors()
 
     def init_tensors(self):
@@ -353,10 +258,14 @@ class EnvData(EnvCoreData):
 
     def update_field(self, env_ids=None):
         def get_field_length(new_level):
-            return FIELD_LEVEL_SETTINGS[self.cfg.level_settings[new_level][0]]
+            field_cfg = self.cfg.field
+            length_index = self.cfg.level_settings[new_level][0]
+            return field_cfg.length_levels[length_index] * field_cfg.scale
 
         def get_goal_width(new_level):
-            return GOAL_LEVEL_SETTINGS[self.cfg.level_settings[new_level][1]]
+            field_cfg = self.cfg.field
+            goal_index = self.cfg.level_settings[new_level][1]
+            return field_cfg.goal_width_levels[goal_index] * field_cfg.scale
 
         if env_ids is None:
             env_ids = ...

@@ -27,7 +27,7 @@ from .env_data import EnvCoreData, EnvData
 if TYPE_CHECKING:
     from isaaclab.assets import RigidObjectCollection
 
-    from .env_data import SoccerGameCfg
+    from isaaclab_marl.soccer_game_cfg import SoccerGameCfg
 
 
 INACTIVE_AGENT_VALUE = float("nan")

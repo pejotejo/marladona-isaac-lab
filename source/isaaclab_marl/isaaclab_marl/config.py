@@ -12,18 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
 import os
-import yaml
 
 MARL_ROOT_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 REPO_ROOT_DIR = os.path.dirname(os.path.dirname(MARL_ROOT_DIR))
 WKS_LOGS_DIR = os.path.join(REPO_ROOT_DIR, "wks_logs")
-
-SCALING = 0.6
-FIELD_LEVEL_SETTINGS = ((np.arange(4) + 2) * 0.2 * 9.0 * SCALING).tolist()
-GOAL_LEVEL_SETTINGS = (np.array([6.0, 4.6, 3.4, 2.4, 1.6]) * SCALING).tolist()
-FIELD_WIDTH = 6.0 * SCALING
 
 APPLY_RANDOMIZATION = True
 WORLD_POS_NORMALIZATION = True
@@ -40,18 +33,3 @@ BALL_MAX_SPEED = 1.5 / SIMULATION2D_SCALER * SIMULATION2D_TIME_FACTOR
 KICK_MODEL = "default"  # "default" or "simulation2d"
 MIRROR_BALL_INIT_POS = False
 PREPROCESS_NET_TYPE = "neighbor_net"  # "attention" or "neighbor_net"
-
-def load_parameters():
-    path = os.path.join(REPO_ROOT_DIR, "config", "parameters.yaml")
-
-    with open(path, encoding="utf-8") as file:
-        data = yaml.safe_load(file)
-
-    if not isinstance(data, dict):
-        raise ValueError("parameters.yaml must contain a mapping")
-
-    for section in ("environment", "training"):
-        if not isinstance(data.get(section), dict):
-                    raise ValueError(f"'{section}' must contain a mapping")
-
-    return data

@@ -19,13 +19,12 @@ from dataclasses import MISSING
 import isaaclab.sim as sim_utils
 from isaaclab.assets import AssetBaseCfg, RigidObjectCfg
 from isaaclab.envs import ManagerBasedRLEnvCfg
-from isaaclab.managers import ActionTermCfg
+from isaaclab.managers import ActionTermCfg, SceneEntityCfg
 from isaaclab.managers import CurriculumTermCfg as CurrTerm
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
 from isaaclab.managers import RewardTermCfg as RewTerm
-from isaaclab.managers import SceneEntityCfg
 from isaaclab.managers import TerminationTermCfg as DoneTerm
 from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.terrains import TerrainImporterCfg
@@ -42,11 +41,8 @@ import isaaclab_marl.tasks.soccer.mdp.observations as O
 import isaaclab_marl.tasks.soccer.mdp.rewards as R
 import isaaclab_marl.tasks.soccer.mdp.terminations as T
 from isaaclab_marl.assets.agent_cfg import AgentCfg, AgentTeamCfg
-from isaaclab_marl.assets.env_data import SoccerGameCfg
 from isaaclab_marl.assets.soccer_ball_cfg import BallCfg
 from isaaclab_marl.config import (
-    FIELD_LEVEL_SETTINGS,
-    GOAL_LEVEL_SETTINGS,
     MARL_ROOT_DIR,
     WORLD_POS_NORMALIZATION,
 )
@@ -55,6 +51,7 @@ from isaaclab_marl.managers.ma_action_manager import (
     BaseMovementAction,
     SoccerMotionAction,
 )
+from isaaclab_marl.soccer_game_cfg import SoccerGameCfg
 
 from isaaclab_marl.terrains import TerrainCfg  # isort: skip
 
@@ -111,17 +108,21 @@ class MySceneCfg(InteractiveSceneCfg):
             0.0,
         )
 
-    def create_soccer_field_visual(self):
+    def create_soccer_field_visual(self, field_cfg):
         level_settings = self.terrain.terrain_generator.sub_terrains[
             "soccer_field"
         ].level_settings
         for i in range(self.terrain.terrain_generator.num_rows):
-            goal_scaler = (
-                GOAL_LEVEL_SETTINGS[level_settings[i][1]] / GOAL_LEVEL_SETTINGS[-1]
+            field_length = (
+                field_cfg.length_levels[level_settings[i][0]] * field_cfg.scale
             )
-            field_scaler = (
-                FIELD_LEVEL_SETTINGS[level_settings[i][0]] / FIELD_LEVEL_SETTINGS[-1]
+            goal_width = (
+                field_cfg.goal_width_levels[level_settings[i][1]] * field_cfg.scale
             )
+
+            field_scaler = field_length / field_cfg.field_asset_length
+            goal_scaler = goal_width / field_cfg.goal_asset_width
+
             for j in range(self.terrain.terrain_generator.num_cols):
                 sub_terrain_origin_x = self.terrain.terrain_generator.size[0] * (
                     -self.terrain.terrain_generator.num_rows / 2 + i
@@ -139,19 +140,20 @@ class MySceneCfg(InteractiveSceneCfg):
                         ),
                         spawn=sim_utils.UsdFileCfg(
                             usd_path=MARL_ROOT_DIR + "/assets/field/field.usd",
-                            scale=(0.6 * field_scaler, 0.6, 1.0),
+                            scale=(
+                                field_scaler,
+                                field_cfg.width
+                                * field_cfg.scale
+                                / field_cfg.field_asset_width,
+                                1.0,
+                            ),
                         ),
                     ),
                 )
 
-                goal_red_x = (
-                    sub_terrain_origin_x
-                    - FIELD_LEVEL_SETTINGS[level_settings[i][0]] / 2
-                )
-                goal_blue_x = (
-                    sub_terrain_origin_x
-                    + FIELD_LEVEL_SETTINGS[level_settings[i][0]] / 2
-                )
+                goal_red_x = sub_terrain_origin_x - field_length / 2
+                goal_blue_x = sub_terrain_origin_x + field_length / 2
+
                 setattr(
                     self,
                     f"goal_red_{i}_{j}",
@@ -163,7 +165,7 @@ class MySceneCfg(InteractiveSceneCfg):
                         ),
                         spawn=sim_utils.UsdFileCfg(
                             usd_path=MARL_ROOT_DIR + "/assets/goal/goal.usd",
-                            scale=(0.6, float(0.6 * goal_scaler), 1.0),
+                            scale=(field_cfg.scale, goal_scaler, 1.0),
                             visual_material=sim_utils.PreviewSurfaceCfg(
                                 diffuse_color=(1.0, 0.0, 0.0)
                             ),
@@ -181,7 +183,7 @@ class MySceneCfg(InteractiveSceneCfg):
                         ),
                         spawn=sim_utils.UsdFileCfg(
                             usd_path=MARL_ROOT_DIR + "/assets/goal/goal.usd",
-                            scale=(0.6, 0.6 * goal_scaler, 1.0),
+                            scale=(field_cfg.scale, goal_scaler, 1.0),
                             visual_material=sim_utils.PreviewSurfaceCfg(
                                 diffuse_color=(0.0, 0.0, 1.0)
                             ),
@@ -384,9 +386,19 @@ class SoccerMARLEnvCfg(ManagerBasedRLEnvCfg):
         self.episode_length_s = 30.0
         # simulation settings
         self.sim.dt = 0.02
+        self.sim.physics = PhysxCfg(gpu_max_rigid_patch_count=10 * 2**15)
+
         self.sim.render_interval = self.decimation
         self.sim.physics_material = self.scene.terrain.physics_material
-        self.sim.physics = PhysxCfg(gpu_max_rigid_patch_count=10 * 2**15)
+
+        terrain = self.scene.terrain.terrain_generator
+        terrain.size = self.soccer_game.field.tile_size
+        soccer_field = terrain.sub_terrains["soccer_field"]
+        soccer_field.field = self.soccer_game.field
+        soccer_field.level_settings = self.soccer_game.level_settings
+        terrain.num_rows = len(self.soccer_game.level_settings)
+
+        self.scene.__post_init__()
 
         # check if terrain levels curriculum is enabled - if so, enable curriculum for terrain generator
         # this generates terrains with increasing difficulty and is useful for training
@@ -400,7 +412,7 @@ class SoccerMARLEnvCfg(ManagerBasedRLEnvCfg):
         self.scene.ball = BallCfg(prim_path="{ENV_REGEX_NS}/Ball")
         self.create_agent()
         if self.soccer_game.create_field_visuals:
-            self.scene.create_soccer_field_visual()
+            self.scene.create_soccer_field_visual(self.soccer_game.field)
 
     def create_agent(self):
         for i in range(self.soccer_game.num_agents_per_team):
@@ -425,23 +437,13 @@ class SoccerMARLEnvCfg(ManagerBasedRLEnvCfg):
 
 @configclass
 class SoccerMARLEnvPlayCfg(SoccerMARLEnvCfg):
-    soccer_game = SoccerGameCfg(
-        num_agents_per_team=3,
-        num_agents_range=[3, 3],
-        eval_env_ratio=0.0,
-        level_settings=[[3, 3]],
-        create_field_visuals=True,
-    )
-    scene = MySceneCfg(num_envs=1, env_spacing=2.5)
-
     def __post_init__(self):
-        self.scene.terrain.terrain_generator.sub_terrains[
-            "soccer_field"
-        ].level_settings = self.soccer_game.level_settings
-        self.episode_length_s = 120
+        self.scene.num_envs = 1
         self.scene.terrain.terrain_generator.num_cols = 1
-        self.scene.terrain.terrain_generator.num_rows = len(
-            self.soccer_game.level_settings
-        )
-        self.scene.__post_init__()
+
+        self.soccer_game.num_agents_range = [self.soccer_game.num_agents_per_team] * 2
+        self.soccer_game.eval_env_ratio = 0.0
+        self.soccer_game.level_settings = [[3, 3]]
+        self.soccer_game.create_field_visuals = True
+
         super().__post_init__()

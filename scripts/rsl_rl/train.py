@@ -10,10 +10,10 @@
 """Launch Isaac Sim Simulator first."""
 
 import argparse
-import numpy as np
 import sys
-import torch
 
+import numpy as np
+import torch
 from isaaclab.app import AppLauncher
 
 # local imports
@@ -78,16 +78,15 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-import gymnasium as gym
 import os
 import pickle
-import torch
 from datetime import datetime
 
-# from rsl_rl.runners import OnPolicyRunner
-from rsl_marl.runners import OnPolicyRunner
-from rsl_marl.utils.custom_vecenv_wrapper import CustomVecEnvWrapper
+import gymnasium as gym
 
+# Import extensions to set up environment tasks
+import isaaclab_marl.tasks  # noqa: F401
+import torch
 from isaaclab.envs import (
     DirectMARLEnv,
     DirectMARLEnvCfg,
@@ -98,15 +97,16 @@ from isaaclab.envs import (
 )
 from isaaclab.utils.dict import print_dict
 from isaaclab.utils.io import dump_yaml
-from isaaclab_tasks.utils import get_checkpoint_path, resolve_task_config
-from isaaclab_visualizers.kit import KitVisualizerCfg
-
-# Import extensions to set up environment tasks
-import isaaclab_marl.tasks  # noqa: F401
-from isaaclab_marl.config import WKS_LOGS_DIR, load_parameters
+from isaaclab_marl.config import WKS_LOGS_DIR
 from isaaclab_marl.tasks.soccer.agents.soccer_marl_ppo_runner_cfg import (
     SoccerMARLPPORunnerCfg,
 )
+from isaaclab_tasks.utils import get_checkpoint_path, resolve_task_config
+from isaaclab_visualizers.kit import KitVisualizerCfg
+
+# from rsl_rl.runners import OnPolicyRunner
+from rsl_marl.runners import OnPolicyRunner
+from rsl_marl.utils.custom_vecenv_wrapper import CustomVecEnvWrapper
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -125,11 +125,6 @@ def main(
     agent_cfg: SoccerMARLPPORunnerCfg,
 ):
     """Train with RSL-RL agent."""
-
-    parameters = load_parameters()
-    env_cfg.from_dict(parameters["environment"])
-    agent_cfg.from_dict(parameters["training"])
-
     # override configurations with non-hydra CLI arguments
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
     env_cfg.scene.num_envs = (

@@ -87,7 +87,7 @@ import isaaclab_marl.tasks  # noqa: F401
 import psutil
 from isaaclab.envs import DirectMARLEnv, VideoRecorderCfg, multi_agent_to_single_agent
 from isaaclab.utils.dict import print_dict
-from isaaclab_marl.config import WKS_LOGS_DIR, load_parameters
+from isaaclab_marl.config import WKS_LOGS_DIR
 from isaaclab_marl.utils.value_plotter import RESOLUTION, ValuePlotter
 from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from isaaclab_visualizers.kit import KitVisualizerCfg
@@ -154,10 +154,6 @@ def main():
     agent_cfg: SoccerMARLPPORunnerCfg = cli_args.parse_rsl_rl_cfg(
         args_cli.task, args_cli
     )
-
-    parameters = load_parameters()
-    env_cfg.from_dict(parameters["environment"])
-    agent_cfg.from_dict(parameters["training"])
 
     agent_cfg = cli_args.update_rsl_rl_cfg(agent_cfg, args_cli)
 
@@ -229,6 +225,10 @@ def main():
             env_data.num_agents_per_team,
             NUM_OF_PLAYERS_TO_VISUALIZE,
             PLOT_VALUE_FUNC_LIST,
+            field_length=env_data.field_length[VISUALIZE_ENV].item(),
+            field_width=env_data.field_width,
+            goal_width=env_data.goal_width[VISUALIZE_ENV].item(),
+            field_cfg=env.unwrapped.cfg.soccer_game.field,
         )
         plot_process = mp.Process(target=value_plotter, args=(queue,))
         plot_process.start()

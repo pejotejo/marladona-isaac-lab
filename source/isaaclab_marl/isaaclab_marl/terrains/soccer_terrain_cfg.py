@@ -18,7 +18,7 @@ from isaaclab.terrains.terrain_generator_cfg import (
 )
 from isaaclab.utils import configclass
 
-from isaaclab_marl.config import FIELD_LEVEL_SETTINGS
+from isaaclab_marl.soccer_game_cfg import SoccerFieldCfg as FieldCfg
 
 from . import soccer_mesh_terrains as mt
 
@@ -26,12 +26,13 @@ from . import soccer_mesh_terrains as mt
 @configclass
 class SoccerFieldCfg(SubTerrainBaseCfg):
     function = mt.soccer_field
+    field: FieldCfg = FieldCfg()
     level_settings = [[2, 2], [3, 2], [3, 3], [3, 4]]
 
 
 @configclass
 class TerrainCfg(TerrainGeneratorCfg):
-    size = (10.4 * 0.8, 7.4 * 0.8)
+    size = FieldCfg().tile_size
     mesh_type: str = "trimesh"  # none, plane, heightfield or trimesh
     env_spacing = 3.0  # not used with heightfields/trimeshes
     border_size = 25  # [m]
@@ -47,7 +48,7 @@ class TerrainCfg(TerrainGeneratorCfg):
     use_cache = False
 
     # Will be updated by the MultiAgentEnv at initialization
-    num_rows = len(FIELD_LEVEL_SETTINGS)  # 8  # number of terrain rows (levels)
+    num_rows = 1  # 8  # number of terrain rows (levels)
     default_eval_level = 2  # default evaluation level
 
     num_cols = 30  # number of terrain cols (types)

@@ -15,11 +15,12 @@
 RESOLUTION = 80
 NORMALIZE_EVALUATOR = False
 
+import time
+
 import matplotlib
 import matplotlib.patheffects as pe
 import matplotlib.pyplot as plt
 import numpy as np
-import time
 from matplotlib import collections as mc
 from matplotlib import transforms
 
@@ -31,7 +32,6 @@ CIRCLE_SCALE = 75 / 450
 
 PENALTY_SCALE_Y = 4 / 6
 PENALTY_SCALE_X = 285 / 450
-SCALING = 0.6
 
 
 def move_figure(f, x, y):
@@ -49,7 +49,14 @@ def move_figure(f, x, y):
 
 class ValuePlotter:
     def __init__(
-        self, num_agents_per_team, num_of_players_to_visualize, plot_value_func_list
+        self,
+        num_agents_per_team,
+        num_of_players_to_visualize,
+        plot_value_func_list,
+        field_length,
+        field_width,
+        goal_width,
+        field_cfg,
     ):
         self.num_agents_per_team = num_agents_per_team
         self.num_players_to_visualize = min(
@@ -60,10 +67,10 @@ class ValuePlotter:
         self.plot_value_func_list = plot_value_func_list
 
         self.default_sub_plot_title = ["Agent Position", "Ball Position"]
-        self.border_offset = 0.5
-        self.field_length = 4.5 * SCALING
-        self.field_width = 3 * SCALING
-        self.goal_width = 1.2 * SCALING
+        self.border_offset = 0.5 * field_cfg.scale
+        self.field_length = field_length / 2
+        self.field_width = field_width / 2
+        self.goal_width = goal_width / 2
         self.goal_depth = 0.1
         if NORMALIZE_EVALUATOR:
             y, x = np.meshgrid(
@@ -72,13 +79,13 @@ class ValuePlotter:
         else:
             y, x = np.meshgrid(
                 np.linspace(
-                    -(3 + self.border_offset) * SCALING,
-                    (3 + self.border_offset) * SCALING,
+                    -(self.field_width + self.border_offset),
+                    self.field_width + self.border_offset,
                     RESOLUTION,
                 ),
                 np.linspace(
-                    -(4.5 + self.border_offset) * SCALING,
-                    (4.5 + self.border_offset) * SCALING,
+                    -(self.field_length + self.border_offset),
+                    self.field_length + self.border_offset,
                     RESOLUTION,
                 ),
             )
