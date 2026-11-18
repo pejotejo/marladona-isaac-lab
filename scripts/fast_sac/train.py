@@ -96,15 +96,17 @@ def main(env_cfg, agent_cfg):
         agent.setup()
         agent.learn()
 
+    except Exception:
+        logging.exception("FastSAC setup or training failed")
+        raise
     finally:
         try:
             if raw_env is not None:
                 raw_env.close()
         finally:
             if wandb_run is not None:
-                wandb_run.finish(
-                    exit_code=1 if sys.exc_info()[0] is not None else 0
-                )
+                wandb_run.finish(exit_code=1 if sys.exc_info()[0] is not None else 0)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a FastSAC soccer policy.")
