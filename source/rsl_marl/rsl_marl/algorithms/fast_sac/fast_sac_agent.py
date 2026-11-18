@@ -46,6 +46,7 @@ class FastSACAgent:
         config: FastSACConfig,
         device: str,
         log_dir: str,
+        log_metrics: Callable[[dict[str, float], int], None] | None = None,
     ):
         if config.use_symmetry:
             raise NotImplementedError("Holosoma symmetry augmentation is not ported")
@@ -61,6 +62,7 @@ class FastSACAgent:
         self.gpu_local_rank = 0
         self.gpu_world_size = 1
         self.is_main_process = True
+        self.log_metrics = log_metrics
 
     def setup(self) -> None:
         args = self.config
@@ -764,6 +766,9 @@ class FastSACAgent:
                     }
                     loss_dict["env_rewards"] = rewards.mean().item()
                     logger.info("step=%d %s", self.global_step, loss_dict)
+                    if self.log_metrics is not None:
+                        self.log_metrics(loss_dict, self.global_step)
+
                     metric_sums.clear()
                     metric_count = 0
 

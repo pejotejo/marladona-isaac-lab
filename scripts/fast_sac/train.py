@@ -10,6 +10,8 @@ from isaaclab.app import AppLauncher
 
 def main(env_cfg, agent_cfg):
     raw_env = None
+    wandb_run = None
+    log_metrics = None
 
     try:
         # Simulator-dependent imports must follow AppLauncher.
@@ -60,6 +62,26 @@ def main(env_cfg, agent_cfg):
             },
         )
 
+        if args_cli.logger == "wandb":
+            import wandb
+
+            wandb_run = wandb.init(
+                project=args_cli.log_project_name or args_cli.experiment_name,
+                name=args_cli.run_name or run_name,
+                dir=log_dir,
+                config={
+                    "algorithm": "fast_sac",
+                    "agent": asdict(agent_cfg),
+                    "task": args_cli.task,
+                    "seed": env_cfg.seed,
+                    "num_envs": env_cfg.scene.num_envs,
+                    "device": env_cfg.sim.device,
+                },
+            )
+            log_metrics = lambda metrics, step: wandb_run.log(
+                metrics, step=step, commit=True
+            )
+
         raw_env = gym.make(args_cli.task, cfg=env_cfg)
         env = FastSACEnv(raw_env)
 
@@ -68,14 +90,21 @@ def main(env_cfg, agent_cfg):
             agent_cfg,
             device=env.device,
             log_dir=log_dir,
+            log_metrics=log_metrics,
         )
+
         agent.setup()
         agent.learn()
 
     finally:
-        if raw_env is not None:
-            raw_env.close()
-
+        try:
+            if raw_env is not None:
+                raw_env.close()
+        finally:
+            if wandb_run is not None:
+                wandb_run.finish(
+                    exit_code=1 if sys.exc_info()[0] is not None else 0
+                )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train a FastSAC soccer policy.")
@@ -94,6 +123,8 @@ if __name__ == "__main__":
     parser.add_argument("--no_amp", action="store_true")
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--enable_cameras", action="store_true")
+    parser.add_argument("--logger", choices=("console", "wandb"), default="console")
+    parser.add_argument("--log_project_name", default=None)
 
     AppLauncher.add_app_launcher_args(parser)
     parser.set_defaults(visualizer=["kit"])
