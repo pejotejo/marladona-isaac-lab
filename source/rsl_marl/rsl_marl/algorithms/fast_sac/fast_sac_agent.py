@@ -765,7 +765,16 @@ class FastSACAgent:
                         for key, value in metric_sums.items()
                     }
                     loss_dict["env_rewards"] = rewards.mean().item()
-                    logger.info("step=%d %s", self.global_step, loss_dict)
+                    print(
+                        f"\n[FastSAC] Step {self.global_step:,} / "
+                        f"{args.num_learning_iterations:,}\n"
+                        f"  Mean step reward: {loss_dict['env_rewards']:.4f}\n"
+                        f"  Critic loss: {loss_dict['qf_loss']:.4f} | "
+                        f"Actor loss: {loss_dict['actor_loss']:.4f}\n"
+                        f"  Alpha: {loss_dict['alpha_value']:.4g} | "
+                        f"Entropy: {loss_dict['policy_entropy']:.4f}",
+                        flush=True,
+                    )
                     if self.log_metrics is not None:
                         self.log_metrics(loss_dict, self.global_step)
 
