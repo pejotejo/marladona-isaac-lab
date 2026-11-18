@@ -5,6 +5,8 @@ import math
 import os
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from datetime import timedelta
+from time import perf_counter
 from typing import Any
 
 import torch
@@ -647,6 +649,9 @@ class FastSACAgent:
         metric_sums = {}
         metric_count = 0
 
+        started_at = perf_counter()
+        start_step = self.global_step
+
         while self.global_step <= args.num_learning_iterations:
             if uses_cudagraphs:
                 torch.compiler.cudagraph_mark_step_begin()
@@ -765,6 +770,23 @@ class FastSACAgent:
                         for key, value in metric_sums.items()
                     }
                     loss_dict["env_rewards"] = rewards.mean().item()
+
+                    elapsed = perf_counter() - started_at
+                    completed_steps = self.global_step - start_step + 1
+                    remaining_steps = max(
+                        0, args.num_learning_iterations - self.global_step
+                    )
+                    eta = elapsed / completed_steps * remaining_steps
+                    samples_per_s = completed_steps * env.num_envs / elapsed
+
+                    loss_dict.update(
+                        {
+                            "time/elapsed_s": elapsed,
+                            "time/eta_s": eta,
+                            "perf/learner_samples_per_s": samples_per_s,
+                        }
+                    )
+
                     print(
                         f"\n[FastSAC] Step {self.global_step:,} / "
                         f"{args.num_learning_iterations:,}\n"
@@ -773,6 +795,10 @@ class FastSACAgent:
                         f"Actor loss: {loss_dict['actor_loss']:.4f}\n"
                         f"  Alpha: {loss_dict['alpha_value']:.4g} | "
                         f"Entropy: {loss_dict['policy_entropy']:.4f}",
+                        f"Entropy: {loss_dict['policy_entropy']:.4f}\n"
+                        f"  Elapsed: {timedelta(seconds=int(elapsed))} | "
+                        f"ETA: {timedelta(seconds=int(eta))} | "
+                        f"Learner samples/s: {samples_per_s:,.0f}",
                         flush=True,
                     )
                     if self.log_metrics is not None:
