@@ -42,7 +42,7 @@ def main(env_cfg, agent_cfg):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Play a FastSAC soccer policy.")
-    parser.add_argument("--task", default="Isaac-Soccer-FastSAC-v0")
+    parser.add_argument("--task", default="Isaac-Soccer-FastSAC-Play-v0")
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--num_envs", type=int, default=1)
     parser.add_argument("--seed", type=int, default=42)

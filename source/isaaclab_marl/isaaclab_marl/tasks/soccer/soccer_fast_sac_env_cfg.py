@@ -19,3 +19,14 @@ class SoccerFastSACEnvCfg(SoccerMARLEnvCfg):
            self.scene.num_envs = 16
 
            super().__post_init__()
+
+@configclass
+class SoccerFastSACEnvPlayCfg(SoccerFastSACEnvCfg):
+    def __post_init__(self):
+        self.scene.terrain.terrain_generator.num_cols = 1
+        self.soccer_game.level_settings = [[3, 3]]
+        self.soccer_game.create_field_visuals = True
+
+        super().__post_init__()
+
+        self.scene.num_envs = 1

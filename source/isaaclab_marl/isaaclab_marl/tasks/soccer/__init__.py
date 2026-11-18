@@ -54,3 +54,14 @@ gym.register(
         ),
     },
 )
+
+gym.register(
+    id="Isaac-Soccer-FastSAC-Play-v0",
+    entry_point=f"{__name__}.soccer_marl_env:SoccerMARLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.soccer_fast_sac_env_cfg:SoccerFastSACEnvPlayCfg"
+        ),
+    },
+)
