@@ -379,6 +379,8 @@ class SoccerMARLEnvCfg(ManagerBasedRLEnvCfg):
     curriculum: CurriculumCfg = CurriculumCfg()
     soccer_game = SoccerGameCfg()
 
+    return_final_observations: bool = False
+
     def __post_init__(self):
         """Post initialization."""
         # general settings

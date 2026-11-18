@@ -12,5 +12,7 @@ setup(
         "torchvision>=0.5.0",
         "numpy>=1.16.4",
         "GitPython",
+        "tensordict",
+        "pydantic>=2",
     ],
 )

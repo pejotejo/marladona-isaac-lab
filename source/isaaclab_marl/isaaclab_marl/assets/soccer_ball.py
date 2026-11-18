@@ -67,13 +67,14 @@ class SoccerBall(EnvCoreData):
         )
 
     def step(self):
+        self.refresh_state()
+        self.check_ball_location()
+
+    def refresh_state(self):
         self.base_pos_w = (
             self.asset.data.root_pos_w.torch[:, :2] - self.env_data.env_origins[:, :2]
         )
-
         self.base_lin_vel_w = self.asset.data.root_lin_vel_w.torch[..., :2]
-
-        self.check_ball_location()
 
     def compute_ball2agent_states(self, agent_pose_w):
         ball2agent_distance = torch.cdist(
@@ -134,6 +135,10 @@ class SoccerBall(EnvCoreData):
         )
 
     def check_ball_location(self):
+        self.update_location_flags()
+        self.reset_ball_at_border(self.ball_reset.nonzero(as_tuple=False).squeeze(-1))
+
+    def update_location_flags(self):
         self.ball_inside_field = torch.logical_and(
             torch.logical_and(
                 self.base_pos_w[:, 0] < self.env_data.field_length / 2,
@@ -156,7 +161,6 @@ class SoccerBall(EnvCoreData):
             torch.logical_not(self.ball_inside_field),
             self.goal_status == 0,
         )
-        self.reset_ball_at_border(self.ball_reset.nonzero(as_tuple=False).squeeze(-1))
 
     def get_goal_status(self):
         return self.goal_status

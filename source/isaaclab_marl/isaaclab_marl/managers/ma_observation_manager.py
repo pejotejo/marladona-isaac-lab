@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import inspect
+from copy import deepcopy
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -28,7 +29,11 @@ class MultiAgentObservationManager(ObservationManager):
         return self._env.env_data.num_agents_per_team * 2
 
     def compute_group(
-        self, group_name: str, update_history: bool = True
+        self,
+        group_name: str,
+        update_history: bool = True,
+        *,
+        snapshot: bool = False,
     ) -> torch.Tensor | dict[str, torch.Tensor]:
         """Computes the observations for a given group.
 
@@ -91,18 +96,21 @@ class MultiAgentObservationManager(ObservationManager):
             # Update the history buffer if observation term has history enabled
             if term_cfg.history_length > 0:
                 history = self._group_obs_term_history_buffer[group_name][term_name]
-                if update_history or history._buffer is None:
+
+                if snapshot:
+                    history = deepcopy(history)
+
+                if snapshot or update_history or history._buffer is None:
                     history.append(obs)
+
+                history_obs = history.buffer
+
                 if term_cfg.flatten_history_dim:
-                    group_obs[term_name] = (
-                        self._group_obs_term_history_buffer[group_name][term_name]
-                        .buffer.transpose(-1, -2)
-                        .reshape(obs.shape[0], -1)
+                    group_obs[term_name] = history_obs.transpose(-1, -2).reshape(
+                        obs.shape[0], -1
                     )
                 else:
-                    group_obs[term_name] = self._group_obs_term_history_buffer[
-                        group_name
-                    ][term_name].buffer
+                    group_obs[term_name] = history_obs
             else:
                 group_obs[term_name] = obs
 
@@ -111,6 +119,48 @@ class MultiAgentObservationManager(ObservationManager):
             return torch.cat(list(group_obs.values()), dim=-1)
         else:
             return group_obs
+
+    @torch.no_grad()
+    def snapshot_groups(self, group_names):
+        return {
+            name: self.compute_group(
+                name,
+                update_history=False,
+                snapshot=True,
+            )
+            for name in group_names
+        }
+
+    def reset_for_matches(self, env_ids):
+        env_ids = torch.as_tensor(env_ids, device=self._env.device, dtype=torch.long)
+        num_matches = self._env.num_envs
+        players_per_match = self.num_agents_per_env
+
+        player_ids = (
+            env_ids[:, None] * players_per_match
+            + torch.arange(players_per_match, device=self._env.device)
+        ).flatten()
+
+        for term_cfgs in self._group_obs_class_term_cfgs.values():
+            for term_cfg in term_cfgs:
+                term_cfg.func.reset(env_ids=env_ids)
+
+        for histories in self._group_obs_term_history_buffer.values():
+            for history in histories.values():
+                if history.batch_size == num_matches * players_per_match:
+                    history.reset(batch_ids=player_ids)
+                elif history.batch_size == num_matches:
+                    history.reset(batch_ids=env_ids)
+                else:
+                    raise ValueError(
+                        f"Unexpected observation history batch size: "
+                        f"{history.batch_size}"
+                    )
+
+        for modifier in self._group_obs_class_modifiers:
+            modifier.reset(env_ids=env_ids)
+
+        return {}
 
     """
     Helper functions.

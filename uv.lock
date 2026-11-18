@@ -3327,6 +3327,8 @@ source = { editable = "source/rsl_marl" }
 dependencies = [
     { name = "gitpython" },
     { name = "numpy" },
+    { name = "pydantic" },
+    { name = "tensordict" },
     { name = "torch" },
     { name = "torchvision" },
 ]
@@ -3335,6 +3337,8 @@ dependencies = [
 requires-dist = [
     { name = "gitpython" },
     { name = "numpy", specifier = ">=1.16.4" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "tensordict" },
     { name = "torch", specifier = ">=1.10.0" },
     { name = "torchvision", specifier = ">=0.5.0" },
 ]

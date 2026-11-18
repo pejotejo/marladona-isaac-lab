@@ -14,15 +14,14 @@
 
 from __future__ import annotations
 
-import torch
-from torch import Tensor
 from typing import TYPE_CHECKING
 
 import isaaclab.utils.math as math_utils
+import torch
+from torch import Tensor
 
 from ..utils.math_utils import transform2dPos
 from .env_data import EnvCoreData, EnvData
-
 
 if TYPE_CHECKING:
     from isaaclab.assets import RigidObjectCollection
@@ -95,13 +94,19 @@ class Agents(EnvCoreData):
         self.asset.write_body_com_velocity_to_sim_index(
             body_velocities=agents_state[..., 7:]
         )
+        self.refresh_state(agents_state)
+
+    def refresh_state(self, agents_state=None):
+        if agents_state is None:
+            agents_state = self.asset.data.body_state_w.torch
 
         self.base_pose_w[..., :2] = (
             agents_state[..., :2].view(self.agent_pos_shape)
             - self.expand_vector_to_env(self.env_data.env_origins)[..., :2]
         )
         self.base_pose_w[..., 2] = math_utils.euler_xyz_from_quat(
-            agents_state[..., 3:7].view(self.env_flatten_quat_shape), wrap_to_2pi=True
+            agents_state[..., 3:7].view(self.env_flatten_quat_shape),
+            wrap_to_2pi=True,
         )[2].view(self.agent_base_shape)
 
         self.base_lin_vel_b = self.asset.data.body_com_lin_vel_b.torch[..., :2]

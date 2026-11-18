@@ -163,6 +163,9 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         Returns:
             A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
         """
+        capture_final = self.cfg.return_final_observations
+        final_observations = None
+
         # process actions
         self.action_manager.process_action(action.to(self.device))
 
@@ -180,7 +183,9 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
             self.agents.step()
             self.ball.step()
             self.ball.compute_ball2agent_states(self.agents.base_pose_w)
-            self.env_data.step(self.ball.get_goal_status())
+            if not capture_final:
+                self.env_data.step(self.ball.get_goal_status())
+
             self.agents.compute_ego_ball_state(self.ball.base_pos_w)
             self.action_manager.apply_action()
             # set actions into simulator
@@ -197,6 +202,14 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
                 self.sim.render()
             # update buffers at sim dt
             self.scene.update(dt=self.physics_dt)
+            if capture_final:
+                self.ball.refresh_state()
+                self.ball.update_location_flags()
+                self.env_data.step(self.ball.get_goal_status())
+
+        if capture_final:
+            self._refresh_cached_state()
+            self.env_data.goal_status.copy_(self.ball.get_goal_status())
 
         # post-step:
         # -- update env counters (used for curriculum generation)
@@ -210,6 +223,11 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         self.reset_time_outs = self.env_data.expand_to_env(
             self.termination_manager.time_outs, flatten_type="env"
         )
+
+        if capture_final:
+            self.reset_terminated = self.reset_terminated.clone()
+            self.reset_time_outs = self.reset_time_outs.clone()
+
         # -- reward computation
         self.reward_buf = self.reward_manager.compute(dt=self.step_dt)
 
@@ -220,14 +238,26 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
 
         # -- reset envs that terminated/timed-out and log the episode information
         reset_env_ids = self.reset_buf.nonzero(as_tuple=False).squeeze(-1)
+
+        if capture_final and len(reset_env_ids) > 0:
+            final_observations = self.observation_manager.snapshot_groups(
+                (
+                    "policy",
+                    "neighbor",
+                    "critic",
+                    "neighbor_critic",
+                )
+            )
+
         if len(reset_env_ids) > 0:
             # trigger recorder terms for pre-reset calls
             self.recorder_manager.record_pre_reset(reset_env_ids)
 
             self._reset_idx(reset_env_ids)
             # update articulation kinematics
-            self.scene.write_data_to_sim()
-            self.sim.forward()
+            if not capture_final:
+                self.scene.write_data_to_sim()
+                self.sim.forward()
 
             # if sensors are added to the scene, make sure we render to reflect changes in reset
             if self.has_rtx_sensors:
@@ -248,13 +278,18 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
             recorder.step()
         self.obs_buf = self.observation_manager.compute(update_history=True)
 
+        extras = self.extras
+        if capture_final:
+            extras = dict(self.extras)
+            extras["final_observations"] = final_observations
+
         # return observations, rewards, resets and extras
         return (
             self.obs_buf,
             self.reward_buf,
             self.reset_terminated,
             self.reset_time_outs,
-            self.extras,
+            extras,
         )
 
     """
@@ -343,7 +378,10 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         # note: This is order-sensitive! Certain things need be reset before others.
         self.extras["log"] = dict()
         # -- observation manager
-        info = self.observation_manager.reset(env_ids)
+        if self.cfg.return_final_observations:
+            info = self.observation_manager.reset_for_matches(env_ids)
+        else:
+            info = self.observation_manager.reset(env_ids)
         # -- action manager
         self.extras["log"].update(info)
         info = self.action_manager.reset(env_ids)
@@ -370,3 +408,15 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         self.extras["score"] = self.env_data.score.clone()
         # reset the episode length buffer
         self.episode_length_buf[env_ids] = 0
+
+        if self.cfg.return_final_observations:
+            self.scene.write_data_to_sim()
+            self.sim.forward()
+            self._refresh_cached_state()
+
+    def _refresh_cached_state(self):
+        self.agents.refresh_state()
+        self.ball.refresh_state()
+        self.ball.update_location_flags()
+        self.ball.compute_ball2agent_states(self.agents.base_pose_w)
+        self.agents.compute_ego_ball_state(self.ball.base_pos_w)

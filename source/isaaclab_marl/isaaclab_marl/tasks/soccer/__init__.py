@@ -43,3 +43,14 @@ gym.register(
         "rsl_rl_cfg_entry_point": f"{agents.__name__}.soccer_marl_ppo_runner_cfg:SoccerMARLPPORunnerCfg",
     },
 )
+
+gym.register(
+    id="Isaac-Soccer-FastSAC-v0",
+    entry_point=f"{__name__}.soccer_marl_env:SoccerMARLEnv",
+    disable_env_checker=True,
+    kwargs={
+        "env_cfg_entry_point": (
+            f"{__name__}.soccer_fast_sac_env_cfg:SoccerFastSACEnvCfg"
+        ),
+    },
+)
