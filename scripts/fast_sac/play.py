@@ -10,7 +10,6 @@ def main(env_cfg, agent_cfg):
 
     try:
         import gymnasium as gym
-
         from rsl_marl.algorithms.fast_sac.fast_sac_agent import FastSACAgent
         from rsl_marl.algorithms.fast_sac.fast_sac_env import FastSACEnv
 
@@ -30,9 +29,7 @@ def main(env_cfg, agent_cfg):
         policy = agent.get_inference_policy()
         obs = env.reset()
 
-        for _ in range(args_cli.max_steps):
-            if not simulation_app.is_running():
-                break
+        while simulation_app.is_running():
             obs, _, _, _ = env.step(policy(obs).float())
 
     finally:
@@ -46,7 +43,6 @@ if __name__ == "__main__":
     parser.add_argument("--checkpoint", required=True)
     parser.add_argument("--num_envs", type=int, default=1)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--max_steps", type=int, default=1000)
     parser.add_argument("--headless", action="store_true")
     parser.add_argument("--enable_cameras", action="store_true")
 
@@ -60,9 +56,8 @@ if __name__ == "__main__":
     simulation_app = app_launcher.app
 
     try:
-        import torch
-
         import isaaclab_marl.tasks  # noqa: F401
+        import torch
         from isaaclab_tasks.utils import parse_env_cfg
         from rsl_marl.algorithms.fast_sac.config import FastSACConfig
 
