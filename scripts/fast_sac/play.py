@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+import time
 
 from isaaclab.app import AppLauncher
 
@@ -30,8 +31,14 @@ def main(env_cfg, agent_cfg):
         policy = agent.get_inference_policy()
         obs = env.reset()
 
+        step_dt = raw_env.unwrapped.step_dt
+
         while simulation_app.is_running():
+            started = time.perf_counter()
             obs, _, _, _ = env.step(policy(obs).float())
+
+            remaining = step_dt - (time.perf_counter() - started)
+            time.sleep(max(0.0, remaining))
 
     finally:
         if raw_env is not None:
