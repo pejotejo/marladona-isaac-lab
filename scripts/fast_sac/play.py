@@ -13,6 +13,7 @@ def main(env_cfg, agent_cfg):
         from rsl_marl.algorithms.fast_sac.fast_sac_agent import FastSACAgent
         from rsl_marl.algorithms.fast_sac.fast_sac_env import FastSACEnv
 
+        env_cfg.sim.render_interval = 1
         env_cfg.seed = args_cli.seed
         raw_env = gym.make(args_cli.task, cfg=env_cfg)
         env = FastSACEnv(raw_env)
