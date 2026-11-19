@@ -447,5 +447,9 @@ class SoccerMARLEnvPlayCfg(SoccerMARLEnvCfg):
         self.soccer_game.eval_env_ratio = 0.0
         self.soccer_game.level_settings = [[3, 3]]
         self.soccer_game.create_field_visuals = True
+        self.soccer_game.agent_id_control = [
+            [1] * self.soccer_game.num_agents_per_team,  # blue: learned policy
+            [3] * self.soccer_game.num_agents_per_team,  # red: bots
+        ]
 
         super().__post_init__()
