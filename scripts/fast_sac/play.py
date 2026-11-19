@@ -4,6 +4,7 @@ import sys
 import time
 
 from isaaclab.app import AppLauncher
+from isaaclab.visualizers import VisualizerCfg
 
 
 def main(env_cfg, agent_cfg):
@@ -13,6 +14,11 @@ def main(env_cfg, agent_cfg):
         import gymnasium as gym
         from rsl_marl.algorithms.fast_sac.fast_sac_agent import FastSACAgent
         from rsl_marl.algorithms.fast_sac.fast_sac_env import FastSACEnv
+
+        if env_cfg.sim.default_visualizer_cfg is None:
+            env_cfg.sim.default_visualizer_cfg = VisualizerCfg()
+
+        env_cfg.sim.default_visualizer_cfg.enable_live_plots = False
 
         env_cfg.sim.render_interval = 1
         env_cfg.seed = args_cli.seed
