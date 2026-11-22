@@ -1954,6 +1954,8 @@ source = { virtual = "." }
 dependencies = [
     { name = "isaaclab", extra = ["isaacsim"] },
     { name = "isaaclab-marl" },
+    { name = "numpy" },
+    { name = "pyyaml" },
     { name = "rsl-marl" },
     { name = "toml" },
 ]
@@ -1983,6 +1985,8 @@ requires-dist = [
     { name = "isaaclab", extras = ["viser"], marker = "extra == 'viser'", specifier = "==3.0.0", index = "https://pypi.org/simple" },
     { name = "isaaclab", extras = ["wandb"], marker = "extra == 'wandb'", specifier = "==3.0.0", index = "https://pypi.org/simple" },
     { name = "isaaclab-marl", editable = "source/isaaclab_marl" },
+    { name = "numpy", specifier = ">=2" },
+    { name = "pyyaml", specifier = ">=6" },
     { name = "rsl-marl", editable = "source/rsl_marl" },
     { name = "toml", specifier = ">=0.10.2" },
 ]

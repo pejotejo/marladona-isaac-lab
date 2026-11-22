@@ -68,6 +68,10 @@ To run the focused compatibility tests in the installed environment:
 uv run --locked --group dev python -m pytest -q tests
 ```
 
+## Evaluation
+
+Run frozen bot and checkpoint trials with `uv run scripts/evaluate.py` and generate an offline HTML report with `uv run scripts/evaluation_report.py`. [Usage and archive format](evaluation/README.md)
+
 ## Visualization Tools ## 
 
 ### Trajectory Analyser ###

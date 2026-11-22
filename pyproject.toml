@@ -6,6 +6,8 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "isaaclab[isaacsim]==3.0.0",
     "isaaclab-marl",
+    "numpy>=2",
+    "PyYAML>=6",
     "rsl-marl",
     "toml>=0.10.2",
 ]

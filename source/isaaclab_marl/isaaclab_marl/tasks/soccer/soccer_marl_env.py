@@ -144,28 +144,8 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
     Operations - MDP
     """
 
-    def step(self, action: torch.Tensor):
-        """Execute one time-step of the environment's dynamics and reset terminated environments.
-
-        Unlike the :class:`ManagerBasedEnv.step` class, the function performs the following operations:
-
-        1. Process the actions.
-        2. Perform physics stepping.
-        3. Perform rendering if gui is enabled.
-        4. Update the environment counters and compute the rewards and terminations.
-        5. Reset the environments that terminated.
-        6. Compute the observations.
-        7. Return the observations, rewards, resets and extras.
-
-        Args:
-            action: The actions to apply on the environment. Shape is (num_envs, action_dim).
-
-        Returns:
-            A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
-        """
+    def step_physics(self, action, after_substep=None):
         capture_final = self.cfg.return_final_observations
-        final_observations = None
-
         # process actions
         self.action_manager.process_action(action.to(self.device))
 
@@ -176,7 +156,7 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
         is_rendering = self.sim.is_rendering
 
         # perform physics stepping
-        for _ in range(self.cfg.decimation):
+        for substep in range(self.cfg.decimation):
             self._sim_step_counter += 1
             # self.scene["ball"].data.root_state_w[...,2] = 1.0
             # set actions into buffers
@@ -206,6 +186,32 @@ class SoccerMARLEnv(ManagerBasedRLEnv):
                 self.ball.refresh_state()
                 self.ball.update_location_flags()
                 self.env_data.step(self.ball.get_goal_status())
+            if after_substep is not None:
+                after_substep(substep + 1)
+
+    def step(self, action: torch.Tensor):
+        """Execute one time-step of the environment's dynamics and reset terminated environments.
+
+        Unlike the :class:`ManagerBasedEnv.step` class, the function performs the following operations:
+
+        1. Process the actions.
+        2. Perform physics stepping.
+        3. Perform rendering if gui is enabled.
+        4. Update the environment counters and compute the rewards and terminations.
+        5. Reset the environments that terminated.
+        6. Compute the observations.
+        7. Return the observations, rewards, resets and extras.
+
+        Args:
+            action: The actions to apply on the environment. Shape is (num_envs, action_dim).
+
+        Returns:
+            A tuple containing the observations, rewards, resets (terminated and truncated) and extras.
+        """
+        capture_final = self.cfg.return_final_observations
+        final_observations = None
+
+        self.step_physics(action)
 
         if capture_final:
             self._refresh_cached_state()

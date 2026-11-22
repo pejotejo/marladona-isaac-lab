@@ -76,13 +76,15 @@ class SoccerBall(EnvCoreData):
         )
         self.base_lin_vel_w = self.asset.data.root_lin_vel_w.torch[..., :2]
 
-    def compute_ball2agent_states(self, agent_pose_w):
+    def compute_ball2agent_states(self, agent_pose_w, inactive=None):
         ball2agent_distance = torch.cdist(
             self.base_pos_w.unsqueeze(1),
             agent_pose_w[..., :2].view(self.team_flatten_pos_shape),
             p=2,
         ).view(self.team_base_shape + (self.num_agents_per_team,))
 
+        if inactive is not None:
+            ball2agent_distance.masked_fill_(inactive, float("inf"))
         self.closest_agent_index = torch.argsort(ball2agent_distance, dim=-1)[..., 0]
         closest_agent_distance = ball2agent_distance[
             torch.arange(self.num_envs).unsqueeze(-1),
