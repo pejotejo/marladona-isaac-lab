@@ -15,6 +15,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--policy", nargs=2, action="append", default=[], metavar=("NAME", "CHECKPOINT"))
     parser.add_argument("--bot", action="store_true")
+    parser.add_argument("--teacher", action="store_true")
+    parser.add_argument("--idle", action="store_true")
     parser.add_argument("--drills", nargs="+", required=True)
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--episodes", type=int, default=256)
@@ -25,8 +27,9 @@ def main():
     candidates = [(name, Path(path)) for name, path in args.policy]
     if any(not path.is_file() for _, path in candidates):
         parser.error("A checkpoint file is missing")
-    if args.bot:
-        candidates.append(("bot", None))
+    for baseline in ("bot", "teacher", "idle"):
+        if getattr(args, baseline):
+            candidates.append((baseline, None))
     labels = [name for name, _ in candidates]
     if not labels or len(set(labels)) != len(labels) or min(args.num_envs, args.episodes) <= 0:
         parser.error("Supply unique candidate names and positive counts")
@@ -43,7 +46,7 @@ def main():
                 for name, checkpoint in candidates:
                     run(SimpleNamespace(mode="eval", drill=drill, num_envs=args.num_envs,
                         seed=args.seed, episodes=args.episodes, device=args.device, checkpoint=checkpoint,
-                        baseline=None if checkpoint else "bot", output=args.output / drill / name), backend)
+                        baseline=None if checkpoint else name, output=args.output / drill / name), backend)
         except Exception:
             traceback.print_exc()
             raise
