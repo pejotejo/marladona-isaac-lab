@@ -20,7 +20,7 @@ def exit_code(x, y, length, width, goal_width):
 
 
 @contextmanager
-def open_backend(suite, launcher_args):
+def open_backend(suite, launcher_args, *, training=False):
     from isaaclab.app import AppLauncher
 
     parser = ArgumentParser(add_help=False)
@@ -54,8 +54,10 @@ def open_backend(suite, launcher_args):
             getattr(cfg.observations, group).enable_corruption = False
         gym_env = gymnasium.make(TASK, cfg=cfg)
         try:
-            with torch.inference_mode():
-                yield IsaacBackend(CustomVecEnvWrapper(gym_env), suite)
+            with torch.no_grad():
+                backend = IsaacBackend(CustomVecEnvWrapper(gym_env), suite)
+            with torch.set_grad_enabled(training):
+                yield backend
         finally:
             gym_env.close()
     finally:
@@ -198,7 +200,7 @@ class IsaacBackend:
         yaw = euler_xyz_from_quat(quat.reshape(-1, 4))[2].reshape(quat.shape[:-1])
         return yaw, self.env.ball.asset.data.root_lin_vel_w.torch
 
-    def _actions(self):
+    def _observations(self, snapshot=False):
         env, torch = self.env, self.torch
         env.agents.refresh_state()
         env.ball.refresh_state()
@@ -206,7 +208,20 @@ class IsaacBackend:
             env.agents.base_pose_w, inactive=env.env_data.inactive
         )
         env.agents.compute_ego_ball_state(env.ball.base_pos_w)
-        obs = env.observation_manager.compute(update_history=True)
+        if snapshot:
+            return env.observation_manager.snapshot_groups(("policy", "neighbor"))
+        return env.observation_manager.compute(update_history=True)
+
+    def candidate_observation(self, snapshot=False):
+        obs = self._observations(snapshot)
+        if not snapshot:
+            self.current_bots_obs = obs["bots"]
+        ids = self.actor_ids[:, 1]
+        return self.torch.cat([obs["policy"][ids], obs["neighbor"][ids]], dim=1)
+
+    def _actions(self):
+        env, torch = self.env, self.torch
+        obs = self._observations()
         actions = torch.zeros_like(self.previous)
         for side, policy in enumerate(self.policies):
             ids = self.actor_ids[:, self.team == side].flatten()
@@ -235,7 +250,7 @@ class IsaacBackend:
             "team": self.team,
         }
 
-    def step(self):
+    def step(self, actions=None):
         env, torch = self.env, self.torch
         data = env.env_data
         codes = torch.zeros_like(self.ticks)
@@ -267,7 +282,13 @@ class IsaacBackend:
             )
             codes = torch.where(tracking, event, codes)
 
-        env.step_physics(self._actions(), after_substep=sample)
+        if actions is None:
+            actions = self._actions()
+        else:
+            mask = data.active & self.live[:, None, None]
+            actions = actions.reshape_as(self.previous).masked_fill(~mask.reshape(-1, 1), 0)
+            self.previous = actions
+        env.step_physics(actions, after_substep=sample)
         self.live &= codes == 0
         return self._frame(ball, players, heading, velocity, self.ticks), [
             self.rules.reasons[i] for i in codes.tolist()
