@@ -44,7 +44,14 @@ class DrillEnv:
     def __init__(self, args, backend):
         self.backend = backend
         self.num_envs = args.num_envs
-        self.drill = Drill(args.drill, args.num_envs, args.device, args.seed)
+        if args.drill == "positioning":
+            from .positioning import Positioning
+            self.drill = Positioning(args.num_envs, args.device, args.seed)
+        elif args.drill == "defense":
+            from .defense import Defense
+            self.drill = Defense(args.num_envs, args.device, args.seed)
+        else:
+            self.drill = Drill(args.drill, args.num_envs, args.device, args.seed)
         self.trials = self.drill.starts(args.num_envs)
         self.frame = backend.reset(dict(enumerate(self.trials)))
         self.obs = backend.candidate_observation()
@@ -58,9 +65,14 @@ class DrillEnv:
     def reset_with_critic_obs(self):
         return self.obs, self.obs
 
-    def teacher(self):
+    def bot(self):
         return self.backend.bots.act(self.backend.current_bots_obs, self.backend.previous,
                                      self.backend.actor_ids[:, 1], configs=["keeper", "player"])
+
+    def teacher(self):
+        if hasattr(self.drill, "expert"):
+            return self.drill.expert(self.frame, self.trials)
+        return self.bot()
 
     def advance(self, candidate):
         actions = self.drill.script(self.frame, self.trials)
@@ -68,10 +80,13 @@ class DrillEnv:
             actions[:, 1] = candidate
         current, reasons = self.backend.step(actions)
         reward, metrics = self.drill.measure(self.frame, current, reasons, self.trials)
+        metrics["learner_kicks"] = (current["kicker"] == 1).float()
         self.frame = current
         return reward, metrics, reasons
 
     def restart(self, slots):
+        if hasattr(self.drill, "reset"):
+            self.drill.reset(slots)
         assignments = dict(zip(slots, self.drill.starts(len(slots))))
         for i, trial in assignments.items():
             self.trials[i] = trial
@@ -120,7 +135,7 @@ def run(args, backend):
     if args.mode == "train":
         config = FastSACConfig(num_learning_iterations=args.updates, batch_size=args.batch_size,
                                learning_starts=args.learning_starts, num_updates=args.num_updates,
-                               compile=False, amp=False, actor_learning_rate=args.actor_lr, save_interval=args.checkpoint_interval,
+                               compile=False, amp=False, gamma=args.gamma, actor_learning_rate=args.actor_lr, save_interval=args.checkpoint_interval,
                                logging_interval=10)
         def log(metrics, step):
             record(args.output / "training.jsonl", dict(step=step, **metrics))
@@ -147,8 +162,10 @@ def run(args, backend):
         candidate = None
         if policy:
             candidate = policy(env.obs)
-        elif args.baseline == "bot":
+        elif args.baseline == "teacher":
             candidate = env.teacher()
+        elif args.baseline == "bot":
+            candidate = env.bot()
         reward, metrics, reasons = env.advance(candidate)
         for key, value in {**metrics, "return": reward}.items():
             if key not in totals:
