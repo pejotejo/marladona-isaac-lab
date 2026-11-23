@@ -180,6 +180,7 @@ class SoccerMotionAction(BaseMovementAction):
         self._kick_target = torch.zeros((*shape, 2), device=self.device)
         self._kick_strength = torch.zeros(shape, device=self.device)
         self._kick_elapsed = torch.zeros(shape, device=self.device)
+        self.executed_kicker = torch.full((self.num_envs,), -1, dtype=torch.long, device=self.device)
 
     def process_actions(self, actions: torch.Tensor):
         if not torch.isfinite(actions).all():
@@ -337,6 +338,7 @@ class SoccerMotionAction(BaseMovementAction):
 
     def _execute_kicks(self, ready_to_kick, direction):
         env_ids, agent_ids = self._select_kickers(ready_to_kick)
+        self.executed_kicker.fill_(-1)
 
         if env_ids.numel() == 0:
             return
@@ -351,6 +353,7 @@ class SoccerMotionAction(BaseMovementAction):
             root_velocity=velocity,
             env_ids=env_ids,
         )
+        self.executed_kicker[env_ids] = agent_ids
 
         self._kick_active[env_ids, agent_ids] = False
 

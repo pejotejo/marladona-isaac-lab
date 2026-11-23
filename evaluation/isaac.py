@@ -261,12 +261,18 @@ class IsaacBackend:
         ball, players = self._positions()
         heading, velocity = self._motion()
         velocity = velocity.clone()
+        kicker = torch.full_like(self.ticks, -1)
+        kick_xy = ball.clone()
 
         def sample(_substep):
             nonlocal ball, players, codes, heading, velocity
             tracking = self.live & (codes == 0)
             current_ball, current_players = self._positions()
             current_heading, current_velocity = self._motion()
+            kicked = env.action_manager.get_term("motion").executed_kicker
+            valid_kick = tracking & (kicked >= 0)
+            kicker.copy_(torch.where(valid_kick, kicked, kicker))
+            kick_xy.copy_(torch.where(valid_kick[:, None], current_ball, kick_xy))
             heading = torch.where(tracking[:, None], current_heading, heading)
             velocity = torch.where(tracking[:, None], current_velocity, velocity)
             self.ticks += tracking
@@ -294,6 +300,8 @@ class IsaacBackend:
             self.previous = actions
         env.step_physics(actions, after_substep=sample)
         self.live &= codes == 0
-        return self._frame(ball, players, heading, velocity, self.ticks), [
+        frame = self._frame(ball, players, heading, velocity, self.ticks)
+        frame.update(kicker=kicker, kick_xy=kick_xy)
+        return frame, [
             self.rules.reasons[i] for i in codes.tolist()
         ]
