@@ -1,6 +1,7 @@
 """Train or evaluate one candidate on an Isaac soccer drill."""
 import argparse
 import sys
+import traceback
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -32,7 +33,11 @@ def main():
                            candidate_checkpoint=None, opponent_checkpoint=None)
     with open_backend(suite, args, training=args.mode == "train") as backend:
         from evaluation.subpolicy_training import run
-        run(args, backend)
+        try:
+            run(args, backend)
+        except Exception:
+            traceback.print_exc()
+            raise
 
 
 if __name__ == "__main__":

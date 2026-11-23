@@ -217,7 +217,11 @@ class IsaacBackend:
         if not snapshot:
             self.current_bots_obs = obs["bots"]
         ids = self.actor_ids[:, 1]
-        return self.torch.cat([obs["policy"][ids], obs["neighbor"][ids]], dim=1)
+        neighbors = obs["neighbor"][ids]
+        # The soccer environment encodes missing players as NaN. A zero
+        # sine/cosine pair distinguishes padding from every real heading.
+        neighbors = neighbors.masked_fill(neighbors.isnan(), 0)
+        return self.torch.cat([obs["policy"][ids], neighbors], dim=1)
 
     def _actions(self):
         env, torch = self.env, self.torch
