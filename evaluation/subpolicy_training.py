@@ -105,6 +105,8 @@ class DrillEnv:
         ).clamp(0, 1)
         gaps = (relative - fraction[..., None] * lanes).norm(dim=-1)
         aim = targets[(gaps.clamp_max(0.38) - 0.04 * lanes.norm(dim=-1)).argmax(1)]
+        if self.drill.name == "midfield":
+            aim = targets[0].expand_as(ball)
         kick_state = self.backend.current_bots_obs["kick_state"][
             self.backend.actor_ids[:, 1]
         ]
