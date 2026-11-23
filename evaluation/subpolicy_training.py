@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+from dataclasses import replace
 
 import torch
 from rsl_marl.algorithms.fast_sac.config import FastSACConfig
@@ -221,6 +222,10 @@ def run(args, backend):
         agent.setup()
         if args.checkpoint:
             agent.load(str(args.checkpoint))
+            warmup_end = agent.global_step + args.learning_starts
+            if args.updates <= warmup_end:
+                raise ValueError("Resume budget must extend past replay-buffer warmup")
+            agent.config = replace(config, learning_starts=warmup_end)
         if args.teacher_steps:
             imitation_loss = warm_start(
                 agent, env, args.teacher_steps, args.recovery_steps

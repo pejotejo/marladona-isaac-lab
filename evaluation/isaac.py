@@ -1,5 +1,6 @@
 """Isaac soccer adapter. Importing this module does not launch Kit."""
 
+import sys
 from argparse import ArgumentParser, Namespace
 from contextlib import contextmanager
 from importlib.metadata import version
@@ -61,7 +62,7 @@ def open_backend(suite, launcher_args, *, training=False):
         finally:
             gym_env.close()
     finally:
-        launcher.app.close()
+        launcher.app.close(exit_code=int(sys.exc_info()[0] is not None))
 
 
 class IsaacBackend:

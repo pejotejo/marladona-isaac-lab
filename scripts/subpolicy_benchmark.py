@@ -19,7 +19,12 @@ def main():
     parser.add_argument("--bot", action="store_true")
     parser.add_argument("--teacher", action="store_true")
     parser.add_argument("--idle", action="store_true")
-    parser.add_argument("--drills", nargs="+", required=True)
+    parser.add_argument(
+        "--drills",
+        nargs="+",
+        choices=("midfield", "duel", "positioning", "defense"),
+        required=True,
+    )
     parser.add_argument("--seed", type=int, required=True)
     parser.add_argument("--episodes", type=int, default=256)
     parser.add_argument("--num-envs", type=int, default=128)

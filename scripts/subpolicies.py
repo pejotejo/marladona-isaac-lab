@@ -14,7 +14,9 @@ from evaluation.isaac import open_backend
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("mode", choices=["train", "eval"])
-    parser.add_argument("--drill", required=True)
+    parser.add_argument(
+        "--drill", choices=("midfield", "duel", "positioning", "defense"), required=True
+    )
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument(
@@ -54,6 +56,10 @@ def main():
     ):
         parser.add_argument("--" + name, type=int, default=default)
     args = parser.parse_args()
+    if args.output.exists() or (args.checkpoint and not args.checkpoint.is_file()):
+        parser.error("Use a fresh output directory and an existing checkpoint file")
+    if args.learning_starts < 0 or args.seed < 0:
+        parser.error("learning-starts and seed must be nonnegative")
     if args.mode == "eval" and bool(args.checkpoint) == bool(args.baseline):
         parser.error("eval requires exactly one of --checkpoint or --baseline")
     if args.mode == "train" and args.baseline:
