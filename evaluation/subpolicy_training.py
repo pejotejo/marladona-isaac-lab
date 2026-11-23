@@ -1,9 +1,12 @@
 """FastSAC transitions and paired-start evaluation on real Isaac drill matches."""
 import json
+import subprocess
 
 import torch
 from rsl_marl.algorithms.fast_sac.config import FastSACConfig
+from rsl_marl.algorithms.fast_sac.fast_sac import Actor
 from rsl_marl.algorithms.fast_sac.fast_sac_agent import FastSACAgent
+from rsl_marl.algorithms.fast_sac.fast_sac_utils import EmpiricalNormalization
 
 from .subpolicies import Drill
 
@@ -11,6 +14,28 @@ from .subpolicies import Drill
 def record(path, data):
     with path.open("a") as stream:
         stream.write(json.dumps(data, allow_nan=False) + "\n")
+
+
+def warm_start(agent, env, steps):
+    """Use Isaac demonstrations for initialization; FastSAC then trains on its own replay."""
+    states, targets = [], []
+    for _ in range(steps):
+        with torch.no_grad():
+            target = env.teacher()
+            states.append(env.obs)
+            targets.append(target)
+            env.step(target)
+    states, targets = torch.cat(states), torch.cat(targets)
+    states = agent.obs_normalizer(states)
+    optimizer = torch.optim.Adam(agent.actor.parameters(), lr=4e-4)
+    for _ in range(800):
+        ids = torch.randint(len(states), (512,), device=states.device)
+        predicted = agent.actor(states[ids])[0]
+        differences = (predicted - targets[ids]).square()
+        differences[:, 3] *= 1 + 8 * (targets[ids, 3] > 0.5)
+        optimizer.zero_grad()
+        differences.mean().backward()
+        optimizer.step()
 
 
 class DrillEnv:
@@ -32,6 +57,10 @@ class DrillEnv:
 
     def reset_with_critic_obs(self):
         return self.obs, self.obs
+
+    def teacher(self):
+        return self.backend.bots.act(self.backend.current_bots_obs, self.backend.previous,
+                                     self.backend.actor_ids[:, 1], configs=["keeper", "player"])
 
     def advance(self, candidate):
         actions = self.drill.script(self.frame, self.trials)
@@ -64,14 +93,34 @@ class DrillEnv:
         }
 
 
+def inference_policy(path, env):
+    checkpoint = torch.load(path, map_location="cpu", weights_only=True)
+    config = FastSACConfig(**checkpoint["args"])
+    if checkpoint["algorithm"] != "fast_sac" or checkpoint["actor_obs_indices"] != env.actor_obs_indices:
+        raise ValueError("Incompatible FastSAC checkpoint or observation dimensions")
+    device = env.obs.device
+    actor = Actor(env.actor_obs_indices, config.actor_obs_keys, env.num_actions, env.num_envs,
+                  config.actor_hidden_dim, config.log_std_max, config.log_std_min,
+                  config.use_tanh, config.use_layer_norm, device=device)
+    actor.load_state_dict(checkpoint["actor_state_dict"])
+    normalizer = EmpiricalNormalization(env.obs.shape[1], device)
+    normalizer.load_state_dict(checkpoint["obs_normalizer_state"])
+    actor.eval()
+    normalizer.eval()
+    return lambda obs: actor(normalizer(obs, update=False))[0]
+
+
 def run(args, backend):
     torch.manual_seed(args.seed)
-    args.output.mkdir(parents=True, exist_ok=True)
+    args.output.mkdir(parents=True, exist_ok=False)
+    revision = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+    (args.output / "config.json").write_text(json.dumps(
+        {"revision": revision, "backend": backend.provenance, "args": vars(args)}, default=str, indent=2))
     env = DrillEnv(args, backend)
-    if args.mode == "train" or args.checkpoint:
+    if args.mode == "train":
         config = FastSACConfig(num_learning_iterations=args.updates, batch_size=args.batch_size,
                                learning_starts=args.learning_starts, num_updates=args.num_updates,
-                               compile=False, amp=False, save_interval=args.checkpoint_interval,
+                               compile=False, amp=False, actor_learning_rate=args.actor_lr, save_interval=args.checkpoint_interval,
                                logging_interval=10)
         def log(metrics, step):
             record(args.output / "training.jsonl", dict(step=step, **metrics))
@@ -79,12 +128,12 @@ def run(args, backend):
         agent.setup()
         if args.checkpoint:
             agent.load(str(args.checkpoint))
-        if args.mode == "train":
-            agent.learn()
-            return
-        policy = agent.get_inference_policy()
-    else:
-        policy = None
+        if args.teacher_steps:
+            warm_start(agent, env, args.teacher_steps)
+            agent.save(str(args.output / "initial_teacher.pt"))
+        agent.learn()
+        return
+    policy = inference_policy(args.checkpoint, env) if args.checkpoint else None
 
     log_path = args.output / "episodes.jsonl"
     log_path.touch(exist_ok=False)
@@ -99,8 +148,7 @@ def run(args, backend):
         if policy:
             candidate = policy(env.obs)
         elif args.baseline == "bot":
-            candidate = backend.bots.act(backend.current_bots_obs, backend.previous,
-                                         backend.actor_ids[:, 1], configs=["keeper", "player"])
+            candidate = env.teacher()
         reward, metrics, reasons = env.advance(candidate)
         for key, value in {**metrics, "return": reward}.items():
             if key not in totals:
