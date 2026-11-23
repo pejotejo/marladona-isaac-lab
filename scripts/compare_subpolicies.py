@@ -9,7 +9,10 @@ import numpy as np
 
 def read_run(directory):
     summary = json.loads((directory / "summary.json").read_text())
-    rows = [json.loads(line) for line in (directory / "episodes.jsonl").read_text().splitlines()]
+    rows = [
+        json.loads(line)
+        for line in (directory / "episodes.jsonl").read_text().splitlines()
+    ]
     rows.sort(key=lambda row: row["episode"])
     if [row["episode"] for row in rows] != list(range(summary["episodes"])):
         raise ValueError(f"{directory} has missing or duplicated episodes")
@@ -27,9 +30,14 @@ def compare(reference, competitor):
     samples = rng.integers(len(left), size=(5000, len(left)))
     result = {}
     for name in left[0]["metrics"]:
-        delta = np.array([a["metrics"][name] - b["metrics"][name] for a, b in zip(left, right)])
+        delta = np.array(
+            [a["metrics"][name] - b["metrics"][name] for a, b in zip(left, right)]
+        )
         interval = np.quantile(delta[samples].mean(axis=1), (0.025, 0.975))
-        result[name] = {"mean_difference": float(delta.mean()), "ci95": interval.tolist()}
+        result[name] = {
+            "mean_difference": float(delta.mean()),
+            "ci95": interval.tolist(),
+        }
     return result
 
 

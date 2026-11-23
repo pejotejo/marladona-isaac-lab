@@ -244,6 +244,7 @@ class IsaacBackend:
 
     def _frame(self, ball, players, heading, velocity, ticks):
         env = self.env
+        motion = env.action_manager.get_term("motion")
         return {
             "time_s": (ticks.double() * env.physics_dt),
             "ball_xy": ball,
@@ -252,6 +253,7 @@ class IsaacBackend:
             "player_xy": players,
             "active": env.env_data.active.flatten(1),
             "team": self.team,
+            "kick_ready": ~(motion._kick_active | motion._kick_was_requested),
         }
 
     def step(self, actions=None):
