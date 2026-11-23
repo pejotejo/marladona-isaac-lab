@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Soccer replay room</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101c20;color:#edf7f4;font:16px system-ui,sans-serif}main{max-width:860px;margin:auto;padding:clamp(12px,3vw,28px)}h1{font-size:clamp(23px,4vw,34px);margin:0 0 14px}.filters,.transport,.legend{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.filters label{flex:1;min-width:95px;font-size:13px;color:#b7cbc9}select,button{font:inherit;color:#f0f7f5;background:#23383c;border:1px solid #536a69;border-radius:6px;padding:7px}.filters select{display:block;width:100%;margin-top:4px}canvas{display:block;width:100%;height:auto;margin:14px 0;border-radius:8px;background:#17473b}.transport input{min-width:60px;flex:1;accent-color:#f5cd65}button{cursor:pointer;min-width:72px}.legend{font-size:13px;color:#c6d6d3;margin-top:12px}.dot{border-radius:50%;display:inline-block;width:12px;height:12px;background:#4fabee}.star{outline:2px solid #ffd05c;outline-offset:2px}.red{background:#f17973}.ball{background:white}.status{font-size:13px;color:#c4d7d3;font-variant-numeric:tabular-nums}.transport output{font-variant-numeric:tabular-nums;font-size:14px}
+</style>
+<main><h1>Soccer replay room</h1>
+<div class="filters"><label>Learned policy<select id="policy"></select></label><label>Drill<select id="drill"></select></label><label>Starting situation<select id="start"></select></label></div>
+<canvas id="pitch" width="900" height="580" aria-label="Recorded robot positions on the soccer pitch"></canvas>
+<div class="transport"><button id="play">Play</button><input id="seek" type="range" value="0" min="0" step="1" aria-label="Replay position"><output id="clock"></output><select id="speed" aria-label="Playback speed"><option value=".5">0.5×</option><option selected>1×</option><option>2×</option></select></div>
+<div class="legend"><i class="dot star"></i>Learned player <i class="dot"></i>Teammate <i class="dot red"></i>Opponent <i class="dot ball"></i>Ball</div><p class="status" id="status"></p></main>
+<script>
+const data=/*RECORDINGS*/null;
+const names={midfield:"Mid Field",duel:"Ball Duel",positioning:"Positioning",defense:"Defense"};
+const ends={goal_a:"Blue scored",goal_b:"Red scored",boundary:"Ball out",timeout:"Time limit"};
+const get=id=>document.getElementById(id);
+const policy=get("policy"),drill=get("drill"),start=get("start"),seek=get("seek"),play=get("play"),speed=get("speed");
+for(const select of [policy,drill]) for(const [key,label] of Object.entries(names)) select.add(new Option(label,key));
+const count=Math.max(...data.clips.map(c=>c.start));
+for(let i=1;i<=count;i++) start.add(new Option(i,i));
+const ctx=get("pitch").getContext("2d");
+let clip,seconds=0,last,playing=false,index=0;
+const X=x=>450+x*145,Y=y=>290-y*145;
+function circle(x,y,r,fill,stroke){ctx.beginPath();ctx.arc(x,y,r,0,2*Math.PI);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.stroke()}}
+function line(x,y,u,v,color){ctx.strokeStyle=color;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(u,v);ctx.stroke()}
+function draw(){
+ const f=clip.frames[index];ctx.clearRect(0,0,900,580);ctx.lineWidth=2;ctx.strokeStyle="#91b9a6";ctx.strokeRect(X(-2.7),Y(1.8),5.4*145,3.6*145);
+ line(450,Y(1.8),450,Y(-1.8),"#91b9a6");circle(450,290,45,null,"#91b9a6");
+ for(const side of [-1,1]){ctx.strokeStyle="#bcd6c9";const x=X(side*2.7);ctx.strokeRect(x,Y(data.goalWidth/2),side*18,data.goalWidth*145)}
+ for(let j=0;j<clip.active.length;j++){const id=clip.active[j],k=3+3*j,x=X(f[k]),y=Y(f[k+1]),yaw=f[k+2];ctx.lineWidth=2;
+ if(id===1){ctx.lineWidth=4;circle(x,y,17,null,"#ffd05c")}circle(x,y,12,id<5?"#4fabee":"#f17973","#172a29");ctx.lineWidth=3;line(x,y,x+12*Math.cos(yaw),y-12*Math.sin(yaw),"#172a29")}
+ ctx.lineWidth=2;circle(X(f[1]),Y(f[2]),7,"#fff","#172a29");
+ seek.value=index;get("clock").textContent=f[0].toFixed(1)+" / "+clip.frames.at(-1)[0].toFixed(1)+" s";
+ get("status").textContent="Blue attacks left.  "+(index===clip.frames.length-1?(ends[clip.end]||clip.end):"");
+}
+function toggle(value){playing=value;play.textContent=value?"Pause":index===clip.frames.length-1?"Replay":"Play";last=undefined}
+function load(){clip=data.clips.find(c=>c.policy===policy.value&&c.drill===drill.value&&c.start===Number(start.value));seconds=0;index=0;seek.max=clip.frames.length-1;toggle(true);draw()}
+function tick(now){if(playing){if(last!==undefined)seconds+=(now-last)/1000*parseFloat(speed.value);last=now;
+ while(index<clip.frames.length-1&&clip.frames[index+1][0]<=seconds)index++;
+ draw();if(index===clip.frames.length-1)toggle(false)}requestAnimationFrame(tick)}
+play.onclick=()=>{if(index===clip.frames.length-1){seconds=0;index=0}toggle(!playing);draw()};
+seek.oninput=()=>{index=Number(seek.value);seconds=clip.frames[index][0];toggle(false);draw()};
+policy.onchange=drill.onchange=start.onchange=load;document.addEventListener("visibilitychange",()=>{last=undefined});load();requestAnimationFrame(tick);
+</script></html>
