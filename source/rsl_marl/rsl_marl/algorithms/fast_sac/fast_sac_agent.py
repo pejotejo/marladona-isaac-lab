@@ -65,6 +65,7 @@ class FastSACAgent:
         self.gpu_world_size = 1
         self.is_main_process = True
         self.log_metrics = log_metrics
+        self.auxiliary_actor_loss = None
 
     def setup(self) -> None:
         args = self.config
@@ -387,6 +388,8 @@ class FastSACAgent:
             q_values = qnet.get_value(q_probs)
             qf_value = q_values.mean(dim=0)
             actor_loss = (self.log_alpha.exp().detach() * log_probs - qf_value).mean()
+            if self.auxiliary_actor_loss is not None:
+                actor_loss = actor_loss + self.auxiliary_actor_loss()
 
         actor_optimizer.zero_grad(set_to_none=True)
         scaler.scale(actor_loss).backward()

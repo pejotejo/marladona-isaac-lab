@@ -26,16 +26,20 @@ def warm_start(agent, env, steps):
             targets.append(target)
             env.step(target)
     states, targets = torch.cat(states), torch.cat(targets)
-    states = agent.obs_normalizer(states)
+    agent.obs_normalizer.update(states)
     optimizer = torch.optim.Adam(agent.actor.parameters(), lr=4e-4)
-    for _ in range(800):
+    def imitation_loss():
         ids = torch.randint(len(states), (512,), device=states.device)
-        predicted = agent.actor(states[ids])[0]
+        predicted = agent.actor(agent.obs_normalizer(states[ids], update=False))[0]
         differences = (predicted - targets[ids]).square()
         differences[:, 3] *= 1 + 8 * (targets[ids, 3] > 0.5)
+        return differences.mean()
+
+    for _ in range(800):
         optimizer.zero_grad()
-        differences.mean().backward()
+        imitation_loss().backward()
         optimizer.step()
+    return imitation_loss
 
 
 class DrillEnv:
@@ -72,7 +76,20 @@ class DrillEnv:
     def teacher(self):
         if hasattr(self.drill, "expert"):
             return self.drill.expert(self.frame, self.trials)
-        return self.bot()
+        action = self.bot()
+        ball = self.frame["ball_xy"]
+        players = self.frame["player_xy"]
+        targets = ball.new_tensor([[-2.7, 0.0], [-2.7, -0.48], [-2.7, 0.48]])
+        lanes = targets - ball[:, None]
+        relative = players[:, 6:7] - ball[:, None]
+        fraction = ((relative * lanes).sum(-1) / lanes.square().sum(-1).clamp_min(1e-5)).clamp(0, 1)
+        gaps = (relative - fraction[..., None] * lanes).norm(dim=-1)
+        aim = targets[(gaps.clamp_max(0.38) - 0.04 * lanes.norm(dim=-1)).argmax(1)]
+        kick_state = self.backend.current_bots_obs["kick_state"][self.backend.actor_ids[:, 1]]
+        distance = (ball - players[:, 1]).norm(dim=-1)
+        action[:, 3] = (kick_state[:, 0] < 0.5) & (kick_state[:, 1] < 0.5) & (distance < 0.70)
+        action[:, 4:6] = aim / ball.new_tensor([2.7, 1.8])
+        return action
 
     def advance(self, candidate):
         actions = self.drill.script(self.frame, self.trials)
@@ -144,7 +161,9 @@ def run(args, backend):
         if args.checkpoint:
             agent.load(str(args.checkpoint))
         if args.teacher_steps:
-            warm_start(agent, env, args.teacher_steps)
+            imitation_loss = warm_start(agent, env, args.teacher_steps)
+            if args.demo_weight:
+                agent.auxiliary_actor_loss = lambda: args.demo_weight * imitation_loss()
             agent.save(str(args.output / "initial_teacher.pt"))
         agent.learn()
         return

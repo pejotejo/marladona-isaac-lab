@@ -21,6 +21,8 @@ def main():
     parser.add_argument("--teacher-steps", type=int, default=0,
                         help="Initialize the FastSAC actor from scripted demonstrations before RL")
     parser.add_argument("--actor-lr", type=float, default=3e-4)
+    parser.add_argument("--demo-weight", type=float, default=0,
+                        help="Weight of demonstration imitation in the FastSAC actor loss")
     parser.add_argument("--gamma", type=float, default=0.97)
     for name, default in (("num-envs", 32), ("seed", 1), ("episodes", 64),
                           ("updates", 100), ("learning-starts", 32), ("batch-size", 512), ("num-updates", 2), ("checkpoint-interval", 10)):
@@ -32,6 +34,8 @@ def main():
         parser.error("--baseline applies to eval only")
     if not 0 < args.gamma < 1:
         parser.error("gamma must be between zero and one")
+    if args.demo_weight < 0 or (args.demo_weight and not args.teacher_steps):
+        parser.error("a positive demo weight requires teacher steps")
     if args.teacher_steps < 0 or args.actor_lr <= 0 or (args.teacher_steps and args.checkpoint):
         parser.error("teacher steps require a fresh training run and actor-lr must be positive")
     if min(args.episodes, args.num_envs, args.updates, args.batch_size, args.num_updates, args.checkpoint_interval) < 1:
