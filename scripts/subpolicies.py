@@ -27,6 +27,12 @@ def main():
     )
     parser.add_argument("--actor-lr", type=float, default=3e-4)
     parser.add_argument(
+        "--recovery-steps",
+        type=int,
+        default=0,
+        help="Extra demonstration steps from states visited by the learned actor",
+    )
+    parser.add_argument(
         "--demo-weight",
         type=float,
         default=0,
@@ -51,7 +57,9 @@ def main():
         parser.error("--baseline applies to eval only")
     if not 0 < args.gamma < 1:
         parser.error("gamma must be between zero and one")
-    if args.demo_weight < 0 or (args.demo_weight and not args.teacher_steps):
+    if min(args.recovery_steps, args.demo_weight) < 0 or (
+        (args.demo_weight or args.recovery_steps) and not args.teacher_steps
+    ):
         parser.error("a positive demo weight requires teacher steps")
     if (
         args.teacher_steps < 0

@@ -9,7 +9,9 @@ from rsl_marl.algorithms.fast_sac.fast_sac import Actor
 from rsl_marl.algorithms.fast_sac.fast_sac_agent import FastSACAgent
 from rsl_marl.algorithms.fast_sac.fast_sac_utils import EmpiricalNormalization
 
-from .subpolicies import Drill
+from .scenarios.ball_drills import Drill
+from .scenarios.defense import Defense
+from .scenarios.positioning import Positioning
 
 
 def record(path, data):
@@ -17,17 +19,9 @@ def record(path, data):
         stream.write(json.dumps(data, allow_nan=False) + "\n")
 
 
-def warm_start(agent, env, steps):
-    """Use Isaac demonstrations for initialization; FastSAC then trains on its own replay."""
-    states, targets = [], []
-    for _ in range(steps):
-        with torch.no_grad():
-            target = env.teacher()
-            states.append(env.obs)
-            targets.append(target)
-            env.step(target)
-    states, targets = torch.cat(states), torch.cat(targets)
-    agent.obs_normalizer.update(states)
+def warm_start(agent, env, steps, recovery_steps):
+    """Fit the actor to teacher actions, optionally including states it visits itself."""
+    observations, commands = [], []
     optimizer = torch.optim.Adam(agent.actor.parameters(), lr=4e-4)
 
     def imitation_loss():
@@ -37,10 +31,30 @@ def warm_start(agent, env, steps):
         differences[:, 3] *= 1 + 8 * (targets[ids, 3] > 0.5)
         return differences.mean()
 
-    for _ in range(800):
-        optimizer.zero_grad()
-        imitation_loss().backward()
-        optimizer.step()
+    for stage, count in enumerate((steps, recovery_steps)):
+        if not count:
+            continue
+        with torch.no_grad():
+            for _ in range(count):
+                target = env.teacher()
+                observations.append(env.obs)
+                commands.append(target)
+                if stage:
+                    prediction = agent.actor(
+                        agent.obs_normalizer(env.obs, update=False)
+                    )[0]
+                    follow_teacher = (
+                        torch.rand((env.num_envs, 1), device=target.device) < 0.15
+                    )
+                    env.step(torch.where(follow_teacher, target, prediction))
+                else:
+                    env.step(target)
+            agent.obs_normalizer.update(torch.cat(observations[-count:]))
+            states, targets = torch.cat(observations), torch.cat(commands)
+        for _ in range(800):
+            optimizer.zero_grad()
+            imitation_loss().backward()
+            optimizer.step()
     return imitation_loss
 
 
@@ -51,12 +65,8 @@ class DrillEnv:
         self.backend = backend
         self.num_envs = args.num_envs
         if args.drill == "positioning":
-            from .positioning import Positioning
-
             self.drill = Positioning(args.num_envs, args.device, args.seed)
         elif args.drill == "defense":
-            from .defense import Defense
-
             self.drill = Defense(args.num_envs, args.device, args.seed)
         else:
             self.drill = Drill(args.drill, args.num_envs, args.device, args.seed)
@@ -210,7 +220,9 @@ def run(args, backend):
         if args.checkpoint:
             agent.load(str(args.checkpoint))
         if args.teacher_steps:
-            imitation_loss = warm_start(agent, env, args.teacher_steps)
+            imitation_loss = warm_start(
+                agent, env, args.teacher_steps, args.recovery_steps
+            )
             if args.demo_weight:
                 agent.auxiliary_actor_loss = lambda: args.demo_weight * imitation_loss()
             agent.save(str(args.output / "initial_teacher.pt"))
