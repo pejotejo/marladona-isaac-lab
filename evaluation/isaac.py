@@ -202,7 +202,7 @@ class IsaacBackend:
         return yaw, self.env.ball.asset.data.root_lin_vel_w.torch
 
     def _observations(self, snapshot=False):
-        env, torch = self.env, self.torch
+        env = self.env
         env.agents.refresh_state()
         env.ball.refresh_state()
         env.ball.compute_ball2agent_states(

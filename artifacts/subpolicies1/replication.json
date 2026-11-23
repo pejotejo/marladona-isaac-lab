@@ -1,0 +1,501 @@
+{
+  "midfield/midfield": {
+    "metrics": {
+      "playing_s": 10.898117672652006,
+      "control_s": 3.6590220865327865,
+      "opponent_control_s": 0.852031124784844,
+      "possession_exits": 1.9609375,
+      "gains": 1.521484375,
+      "boundary_exits": 0.009765625,
+      "progress_m": 2.5081151137128472,
+      "goals_for": 0.88671875,
+      "goals_against": 0.0,
+      "learner_kicks": 2.291015625,
+      "return": 8.0731649013469
+    },
+    "reasons": {
+      "goal_a": 454,
+      "boundary": 5,
+      "timeout": 53
+    }
+  },
+  "midfield/duel": {
+    "metrics": {
+      "playing_s": 11.427374932914972,
+      "control_s": 3.041405442287214,
+      "opponent_control_s": 0.6653124210424721,
+      "possession_exits": 1.951171875,
+      "gains": 1.552734375,
+      "boundary_exits": 0.1953125,
+      "progress_m": 2.154712756862864,
+      "goals_for": 0.474609375,
+      "goals_against": 0.0,
+      "learner_kicks": 2.23046875,
+      "return": 4.990758297033608
+    },
+    "reasons": {
+      "goal_a": 243,
+      "boundary": 100,
+      "timeout": 169
+    },
+    "home_minus_competitor": {
+      "mean_difference": 3.0824066043132916,
+      "ci95": [
+        2.7317374723526884,
+        3.42259516355698
+      ]
+    }
+  },
+  "midfield/positioning": {
+    "metrics": {
+      "playing_s": 12.7999906539917,
+      "control_s": 4.382498110644519,
+      "opponent_control_s": 0.0,
+      "possession_exits": 1.12890625,
+      "gains": 1.267578125,
+      "boundary_exits": 0.0,
+      "progress_m": 0.2447972083464265,
+      "goals_for": 0.0,
+      "goals_against": 0.0,
+      "learner_kicks": 0.0,
+      "return": 0.14594671597569686
+    },
+    "reasons": {
+      "timeout": 512
+    },
+    "home_minus_competitor": {
+      "mean_difference": 7.927218185371203,
+      "ci95": [
+        7.7432961352340275,
+        8.10658853489124
+      ]
+    }
+  },
+  "midfield/defense": {
+    "metrics": {
+      "playing_s": 11.679210607893765,
+      "control_s": 3.7742174122249708,
+      "opponent_control_s": 0.25453120868769474,
+      "possession_exits": 2.046875,
+      "gains": 1.73828125,
+      "boundary_exits": 0.544921875,
+      "progress_m": 1.5549850689712912,
+      "goals_for": 0.056640625,
+      "goals_against": 0.0,
+      "learner_kicks": 2.154296875,
+      "return": 1.1792316295322962
+    },
+    "reasons": {
+      "boundary": 279,
+      "goal_a": 29,
+      "timeout": 204
+    },
+    "home_minus_competitor": {
+      "mean_difference": 6.893933271814603,
+      "ci95": [
+        6.6140468324505495,
+        7.16613547533052
+      ]
+    }
+  },
+  "midfield/bot": {
+    "metrics": {
+      "playing_s": 10.509602411650121,
+      "control_s": 3.2503896029666066,
+      "opponent_control_s": 0.9090624035452493,
+      "possession_exits": 1.916015625,
+      "gains": 1.513671875,
+      "boundary_exits": 0.00390625,
+      "progress_m": 2.7187388706952333,
+      "goals_for": 0.9375,
+      "goals_against": 0.0,
+      "learner_kicks": 2.431640625,
+      "return": 8.70146517129615
+    },
+    "reasons": {
+      "goal_a": 480,
+      "boundary": 2,
+      "timeout": 30
+    },
+    "home_minus_competitor": {
+      "mean_difference": -0.6283002699492499,
+      "ci95": [
+        -0.7973056721384637,
+        -0.46443293830961924
+      ]
+    }
+  },
+  "duel/midfield": {
+    "metrics": {
+      "playing_s": 11.963155603967607,
+      "control_s": 3.0812489480886143,
+      "opponent_control_s": 4.009333978261566,
+      "possession_exits": 2.1953125,
+      "gains": 1.94140625,
+      "boundary_exits": 0.009765625,
+      "progress_m": 1.9574699972290546,
+      "goals_for": 0.412109375,
+      "goals_against": 0.0078125,
+      "learner_kicks": 3.126953125,
+      "return": 2.65280655857714
+    },
+    "reasons": {
+      "goal_a": 211,
+      "goal_b": 4,
+      "boundary": 5,
+      "timeout": 292
+    },
+    "home_minus_competitor": {
+      "mean_difference": 0.6318725093842659,
+      "ci95": [
+        0.3226425635233682,
+        0.9462976402850471
+      ]
+    }
+  },
+  "duel/duel": {
+    "metrics": {
+      "playing_s": 11.830772934481502,
+      "control_s": 2.8601944354595616,
+      "opponent_control_s": 3.692302951734746,
+      "possession_exits": 2.06640625,
+      "gains": 1.8515625,
+      "boundary_exits": 0.0078125,
+      "progress_m": 2.0099233456421643,
+      "goals_for": 0.48046875,
+      "goals_against": 0.0078125,
+      "learner_kicks": 2.734375,
+      "return": 3.284679067961406
+    },
+    "reasons": {
+      "goal_a": 246,
+      "goal_b": 4,
+      "boundary": 4,
+      "timeout": 258
+    }
+  },
+  "duel/positioning": {
+    "metrics": {
+      "playing_s": 12.607647110242397,
+      "control_s": 3.599373468430713,
+      "opponent_control_s": 3.181170184427174,
+      "possession_exits": 1.28515625,
+      "gains": 1.109375,
+      "boundary_exits": 0.001953125,
+      "progress_m": -0.5591031704097986,
+      "goals_for": 0.0,
+      "goals_against": 0.109375,
+      "learner_kicks": 0.0,
+      "return": -3.5858093461301905
+    },
+    "reasons": {
+      "boundary": 1,
+      "goal_b": 56,
+      "timeout": 455
+    },
+    "home_minus_competitor": {
+      "mean_difference": 6.8704884140915965,
+      "ci95": [
+        6.297268629052496,
+        7.449215825687543
+      ]
+    }
+  },
+  "duel/defense": {
+    "metrics": {
+      "playing_s": 12.09299922734499,
+      "control_s": 2.8385928783682175,
+      "opponent_control_s": 3.219725194881903,
+      "possession_exits": 2.02734375,
+      "gains": 1.755859375,
+      "boundary_exits": 0.310546875,
+      "progress_m": 1.4623494041152298,
+      "goals_for": 0.064453125,
+      "goals_against": 0.005859375,
+      "learner_kicks": 2.333984375,
+      "return": -0.16425135516146838
+    },
+    "reasons": {
+      "boundary": 159,
+      "goal_b": 3,
+      "goal_a": 33,
+      "timeout": 317
+    },
+    "home_minus_competitor": {
+      "mean_difference": 3.4489304231228743,
+      "ci95": [
+        3.0741392136595094,
+        3.8149495224298784
+      ]
+    }
+  },
+  "duel/bot": {
+    "metrics": {
+      "playing_s": 11.802374508231878,
+      "control_s": 3.0339052566851024,
+      "opponent_control_s": 3.7983575231337454,
+      "possession_exits": 2.275390625,
+      "gains": 2.029296875,
+      "boundary_exits": 0.001953125,
+      "progress_m": 2.148930163355544,
+      "goals_for": 0.462890625,
+      "goals_against": 0.0078125,
+      "learner_kicks": 3.291015625,
+      "return": 3.408013046715496
+    },
+    "reasons": {
+      "goal_a": 237,
+      "goal_b": 4,
+      "boundary": 1,
+      "timeout": 270
+    },
+    "home_minus_competitor": {
+      "mean_difference": -0.12333397875408991,
+      "ci95": [
+        -0.4511148707133543,
+        0.18790259324478017
+      ]
+    }
+  },
+  "positioning/midfield": {
+    "metrics": {
+      "playing_s": 15.990729801356792,
+      "spacing_s": 11.459738586097956,
+      "open_lane_s": 11.450722756329924,
+      "shot_opportunity_s": 0.6020409540797118,
+      "releases": 1.0,
+      "receptions": 0.466796875,
+      "goals_for": 0.001953125,
+      "learner_kicks": 0.236328125,
+      "return": 2.9596106603494263
+    },
+    "reasons": {
+      "boundary": 3,
+      "goal_a": 1,
+      "timeout": 508
+    },
+    "home_minus_competitor": {
+      "mean_difference": 2.1643444309920596,
+      "ci95": [
+        1.914688722863957,
+        2.4135394266771977
+      ]
+    }
+  },
+  "positioning/duel": {
+    "metrics": {
+      "playing_s": 15.995612606406212,
+      "spacing_s": 11.015365960542113,
+      "open_lane_s": 11.297180015128106,
+      "shot_opportunity_s": 0.6153959513176233,
+      "releases": 1.0,
+      "receptions": 0.3984375,
+      "goals_for": 0.001953125,
+      "learner_kicks": 0.041015625,
+      "return": 2.599768017340466
+    },
+    "reasons": {
+      "goal_a": 1,
+      "timeout": 510,
+      "boundary": 1
+    },
+    "home_minus_competitor": {
+      "mean_difference": 2.52418707400102,
+      "ci95": [
+        2.2741248918644943,
+        2.7694872582294465
+      ]
+    }
+  },
+  "positioning/positioning": {
+    "metrics": {
+      "playing_s": 15.993229798972607,
+      "spacing_s": 11.6216451972723,
+      "open_lane_s": 10.74839360639453,
+      "shot_opportunity_s": 0.47587163749267347,
+      "releases": 1.0,
+      "receptions": 0.841796875,
+      "goals_for": 0.01171875,
+      "learner_kicks": 3.240234375,
+      "return": 5.123955091341486
+    },
+    "reasons": {
+      "boundary": 1,
+      "goal_a": 6,
+      "timeout": 505
+    }
+  },
+  "positioning/defense": {
+    "metrics": {
+      "playing_s": 15.999987602233887,
+      "spacing_s": 11.023667457222473,
+      "open_lane_s": 11.139367319643497,
+      "shot_opportunity_s": 0.6272196737118065,
+      "releases": 1.0,
+      "receptions": 0.373046875,
+      "goals_for": 0.0,
+      "learner_kicks": 0.11328125,
+      "return": 2.4637020069358186
+    },
+    "reasons": {
+      "timeout": 512
+    },
+    "home_minus_competitor": {
+      "mean_difference": 2.6602530844056673,
+      "ci95": [
+        2.4030078769517558,
+        2.915370289174257
+      ]
+    }
+  },
+  "positioning/bot": {
+    "metrics": {
+      "playing_s": 15.797253483906388,
+      "spacing_s": 9.90048272907734,
+      "open_lane_s": 10.640160830691457,
+      "shot_opportunity_s": 0.912681721343688,
+      "releases": 0.998046875,
+      "receptions": 0.3203125,
+      "goals_for": 0.224609375,
+      "learner_kicks": 2.33984375,
+      "return": 2.5138268749869894
+    },
+    "reasons": {
+      "goal_a": 115,
+      "timeout": 397
+    },
+    "home_minus_competitor": {
+      "mean_difference": 2.6101282163544965,
+      "ci95": [
+        2.334238844054653,
+        2.88057211110563
+      ]
+    }
+  },
+  "defense/midfield": {
+    "metrics": {
+      "playing_s": 16.472487907856703,
+      "control_s": 3.067499024240533,
+      "recoveries": 0.998046875,
+      "clearances": 0.376953125,
+      "progress_m": 1.5443999874405563,
+      "goals_for": 0.298828125,
+      "goals_against": 0.05078125,
+      "boundary_exits": 0.0078125,
+      "learner_kicks": 5.55078125,
+      "return": 2.259155477022432
+    },
+    "reasons": {
+      "goal_b": 26,
+      "goal_a": 153,
+      "boundary": 4,
+      "timeout": 329
+    },
+    "home_minus_competitor": {
+      "mean_difference": 0.8614969079389994,
+      "ci95": [
+        0.5706417200003671,
+        1.1592420372442573
+      ]
+    }
+  },
+  "defense/duel": {
+    "metrics": {
+      "playing_s": 16.420378593727946,
+      "control_s": 3.178475592052564,
+      "recoveries": 0.99609375,
+      "clearances": 0.47265625,
+      "progress_m": 1.6907419306226075,
+      "goals_for": 0.3359375,
+      "goals_against": 0.046875,
+      "boundary_exits": 0.02734375,
+      "learner_kicks": 4.515625,
+      "return": 2.622432805634162
+    },
+    "reasons": {
+      "goal_b": 24,
+      "goal_a": 172,
+      "boundary": 14,
+      "timeout": 302
+    },
+    "home_minus_competitor": {
+      "mean_difference": 0.49821957932726946,
+      "ci95": [
+        0.22609837445379527,
+        0.7862927816910086
+      ]
+    }
+  },
+  "defense/positioning": {
+    "metrics": {
+      "playing_s": 12.331710153259337,
+      "control_s": 1.9137883514922578,
+      "recoveries": 0.73828125,
+      "clearances": 0.0,
+      "progress_m": -2.205726443324238,
+      "goals_for": 0.0,
+      "goals_against": 0.888671875,
+      "boundary_exits": 0.001953125,
+      "learner_kicks": 0.0,
+      "return": -5.9452022435773415
+    },
+    "reasons": {
+      "boundary": 1,
+      "goal_b": 455,
+      "timeout": 56
+    },
+    "home_minus_competitor": {
+      "mean_difference": 9.065854628538773,
+      "ci95": [
+        8.79524111107366,
+        9.329538340948966
+      ]
+    }
+  },
+  "defense/defense": {
+    "metrics": {
+      "playing_s": 15.76381662208587,
+      "control_s": 2.946444537723437,
+      "recoveries": 0.986328125,
+      "clearances": 0.75,
+      "progress_m": 2.231222916394472,
+      "goals_for": 0.0,
+      "goals_against": 0.048828125,
+      "boundary_exits": 0.623046875,
+      "learner_kicks": 3.24609375,
+      "return": 3.1206523849614314
+    },
+    "reasons": {
+      "goal_b": 25,
+      "boundary": 319,
+      "timeout": 168
+    }
+  },
+  "defense/bot": {
+    "metrics": {
+      "playing_s": 16.498933241702616,
+      "control_s": 3.365467559080571,
+      "recoveries": 0.998046875,
+      "clearances": 0.30859375,
+      "progress_m": 1.1238864357583225,
+      "goals_for": 0.234375,
+      "goals_against": 0.0703125,
+      "boundary_exits": 0.0078125,
+      "learner_kicks": 6.087890625,
+      "return": 1.7261029145756766
+    },
+    "reasons": {
+      "goal_b": 36,
+      "boundary": 4,
+      "goal_a": 120,
+      "timeout": 352
+    },
+    "home_minus_competitor": {
+      "mean_difference": 1.3945494703857548,
+      "ci95": [
+        1.067197356472525,
+        1.7407346692543342
+      ]
+    }
+  }
+}

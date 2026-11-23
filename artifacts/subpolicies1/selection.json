@@ -1,0 +1,289 @@
+{
+  "selection_seed": 31001,
+  "test_seed": 91009,
+  "test_episodes": 256,
+  "sim_revision": "fdcaddea68f945f293bef9c03d61c18bf29e37fe",
+  "selection_method": "Highest mean return on the home drill, among evaluated post-FastSAC checkpoints.",
+  "policies": {
+    "midfield": {
+      "checkpoint": "runs/midfield-recovery/model_0000300.pt",
+      "validation": "runs/recovery300-midfield/midfield/recovery300/summary.json",
+      "mean_return": 8.166564579121768,
+      "goals": 0.8984375,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null,
+      "weights": "artifacts/subpolicies1/weights/midfield.pt",
+      "weights_sha256": "0f99158aae6ee60559f376fa2ef01c03226e890b2e77cefa103402755f072a48",
+      "training_checkpoint_sha256": "df92db09042a43a81844c8e5bb705fbcccc50cfeb5b42035659ee9fd15ee0ffe",
+      "training_config": {
+        "revision": "0e72613a66dcf0531f4fa404c76e838532251479",
+        "backend": {
+          "name": "isaac",
+          "version": 2,
+          "physics_backend": "PhysxCfg",
+          "observation_corruption": {
+            "policy": false,
+            "neighbor": false,
+            "bots": false
+          },
+          "bot_roles": [
+            "keeper",
+            "player",
+            "player",
+            "player",
+            "player"
+          ],
+          "controller_observations": [
+            "policy",
+            "neighbor"
+          ],
+          "ball_roll_friction_range": [
+            5e-05,
+            5e-05
+          ],
+          "task": "Isaac-Soccer-Play-v0",
+          "isaaclab": "3.0.0",
+          "physics_dt_s": 0.02,
+          "decimation": 4,
+          "field_length_m": 5.400000095367432,
+          "field_width_m": 3.5999999999999996,
+          "goal_width_m": 1.440000057220459,
+          "device": "cuda:0"
+        },
+        "args": {
+          "mode": "train",
+          "drill": "midfield",
+          "output": "runs/midfield-recovery",
+          "device": "cuda:0",
+          "baseline": null,
+          "checkpoint": null,
+          "teacher_steps": 320,
+          "actor_lr": 8e-05,
+          "recovery_steps": 240,
+          "demo_weight": 12.0,
+          "gamma": 0.99,
+          "num_envs": 128,
+          "seed": 813,
+          "episodes": 64,
+          "updates": 1200,
+          "learning_starts": 64,
+          "batch_size": 1024,
+          "num_updates": 2,
+          "checkpoint_interval": 300,
+          "headless": true
+        }
+      }
+    },
+    "duel": {
+      "checkpoint": "runs/duel-recovery/model_0000900.pt",
+      "validation": "runs/recover900-duel/duel/r900/summary.json",
+      "mean_return": 4.215618510803324,
+      "goals": 0.59375,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null,
+      "weights": "artifacts/subpolicies1/weights/duel.pt",
+      "weights_sha256": "a449277666617d2d83d56b1921f57df75ec7e117fb2b3c10201b131b4defae85",
+      "training_checkpoint_sha256": "2f84cc055f142229f3d05926bd3b4a4d367347c3761463a0fd3d8eceea012f44",
+      "training_config": {
+        "revision": "0e72613a66dcf0531f4fa404c76e838532251479",
+        "backend": {
+          "name": "isaac",
+          "version": 2,
+          "physics_backend": "PhysxCfg",
+          "observation_corruption": {
+            "policy": false,
+            "neighbor": false,
+            "bots": false
+          },
+          "bot_roles": [
+            "keeper",
+            "player",
+            "player",
+            "player",
+            "player"
+          ],
+          "controller_observations": [
+            "policy",
+            "neighbor"
+          ],
+          "ball_roll_friction_range": [
+            5e-05,
+            5e-05
+          ],
+          "task": "Isaac-Soccer-Play-v0",
+          "isaaclab": "3.0.0",
+          "physics_dt_s": 0.02,
+          "decimation": 4,
+          "field_length_m": 5.400000095367432,
+          "field_width_m": 3.5999999999999996,
+          "goal_width_m": 1.440000057220459,
+          "device": "cuda:0"
+        },
+        "args": {
+          "mode": "train",
+          "drill": "duel",
+          "output": "runs/duel-recovery",
+          "device": "cuda:0",
+          "baseline": null,
+          "checkpoint": null,
+          "teacher_steps": 320,
+          "actor_lr": 8e-05,
+          "recovery_steps": 240,
+          "demo_weight": 12.0,
+          "gamma": 0.99,
+          "num_envs": 128,
+          "seed": 814,
+          "episodes": 64,
+          "updates": 1200,
+          "learning_starts": 64,
+          "batch_size": 1024,
+          "num_updates": 2,
+          "checkpoint_interval": 300,
+          "headless": true
+        }
+      }
+    },
+    "positioning": {
+      "checkpoint": "runs/positioning-recovery/model_0000300.pt",
+      "validation": "runs/recnew-positioning/positioning/rec300/summary.json",
+      "mean_return": 5.224142402992584,
+      "goals": 0.0078125,
+      "concessions": null,
+      "receptions": 0.8515625,
+      "clearances": null,
+      "weights": "artifacts/subpolicies1/weights/positioning.pt",
+      "weights_sha256": "c9696b3421b37b9c9f509d1aa0c57ca8f45bc762178f89a2efb83909f43c5191",
+      "training_checkpoint_sha256": "6c73f1fabfc38b7a043a9327a644c23d5b776fa8d095c3a7016d973656a39e52",
+      "training_config": {
+        "revision": "878ca941b7bb25c3856560edc93b59ad1a69580b",
+        "backend": {
+          "name": "isaac",
+          "version": 2,
+          "physics_backend": "PhysxCfg",
+          "observation_corruption": {
+            "policy": false,
+            "neighbor": false,
+            "bots": false
+          },
+          "bot_roles": [
+            "keeper",
+            "player",
+            "player",
+            "player",
+            "player"
+          ],
+          "controller_observations": [
+            "policy",
+            "neighbor"
+          ],
+          "ball_roll_friction_range": [
+            5e-05,
+            5e-05
+          ],
+          "task": "Isaac-Soccer-Play-v0",
+          "isaaclab": "3.0.0",
+          "physics_dt_s": 0.02,
+          "decimation": 4,
+          "field_length_m": 5.400000095367432,
+          "field_width_m": 3.5999999999999996,
+          "goal_width_m": 1.440000057220459,
+          "device": "cuda:0"
+        },
+        "args": {
+          "mode": "train",
+          "drill": "positioning",
+          "output": "runs/positioning-recovery",
+          "device": "cuda:0",
+          "baseline": null,
+          "checkpoint": null,
+          "teacher_steps": 220,
+          "actor_lr": 6e-05,
+          "recovery_steps": 180,
+          "demo_weight": 12.0,
+          "gamma": 0.99,
+          "num_envs": 128,
+          "seed": 933,
+          "episodes": 64,
+          "updates": 900,
+          "learning_starts": 64,
+          "batch_size": 1024,
+          "num_updates": 2,
+          "checkpoint_interval": 300,
+          "headless": true
+        }
+      }
+    },
+    "defense": {
+      "checkpoint": "runs/defense-recovery/model_0000900.pt",
+      "validation": "runs/recnew-defense/defense/rec900/summary.json",
+      "mean_return": 3.3549900493526366,
+      "goals": 0.0,
+      "concessions": 0.0234375,
+      "receptions": null,
+      "clearances": 0.7734375,
+      "weights": "artifacts/subpolicies1/weights/defense.pt",
+      "weights_sha256": "ed89a1472b9e97119d02a611f543dea53197fe808ad8b51f6dd95befa5dbdf7f",
+      "training_checkpoint_sha256": "9d5e0d19c6f9bc2bc265d4882513a106ccf22edec9f6b4a79e6e037bec756037",
+      "training_config": {
+        "revision": "878ca941b7bb25c3856560edc93b59ad1a69580b",
+        "backend": {
+          "name": "isaac",
+          "version": 2,
+          "physics_backend": "PhysxCfg",
+          "observation_corruption": {
+            "policy": false,
+            "neighbor": false,
+            "bots": false
+          },
+          "bot_roles": [
+            "keeper",
+            "player",
+            "player",
+            "player",
+            "player"
+          ],
+          "controller_observations": [
+            "policy",
+            "neighbor"
+          ],
+          "ball_roll_friction_range": [
+            5e-05,
+            5e-05
+          ],
+          "task": "Isaac-Soccer-Play-v0",
+          "isaaclab": "3.0.0",
+          "physics_dt_s": 0.02,
+          "decimation": 4,
+          "field_length_m": 5.400000095367432,
+          "field_width_m": 3.5999999999999996,
+          "goal_width_m": 1.440000057220459,
+          "device": "cuda:0"
+        },
+        "args": {
+          "mode": "train",
+          "drill": "defense",
+          "output": "runs/defense-recovery",
+          "device": "cuda:0",
+          "baseline": null,
+          "checkpoint": null,
+          "teacher_steps": 220,
+          "actor_lr": 6e-05,
+          "recovery_steps": 180,
+          "demo_weight": 12.0,
+          "gamma": 0.99,
+          "num_envs": 128,
+          "seed": 934,
+          "episodes": 64,
+          "updates": 900,
+          "learning_starts": 64,
+          "batch_size": 1024,
+          "num_updates": 2,
+          "checkpoint_interval": 300,
+          "headless": true
+        }
+      }
+    }
+  }
+}

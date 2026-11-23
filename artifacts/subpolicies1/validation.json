@@ -1,0 +1,388 @@
+{
+  "midfield": [
+    {
+      "checkpoint": "runs/midfield-recovery/model_0000300.pt",
+      "validation": "runs/recovery300-midfield/midfield/recovery300/summary.json",
+      "mean_return": 8.166564579121768,
+      "goals": 0.8984375,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-recovery/model_0000900.pt",
+      "validation": "runs/recover900-midfield/midfield/r900/summary.json",
+      "mean_return": 8.008874620310962,
+      "goals": 0.8828125,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-recovery/model_0001200.pt",
+      "validation": "runs/recover1200-midfield/midfield/recovery1200/summary.json",
+      "mean_return": 7.994174697436392,
+      "goals": 0.8828125,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-regularized/model_0000900.pt",
+      "validation": "runs/late-midfield/midfield/r900/summary.json",
+      "mean_return": 7.978499252349138,
+      "goals": 0.8515625,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-regularized/model_0000600.pt",
+      "validation": "runs/reg600-midfield/midfield/mid/summary.json",
+      "mean_return": 7.952495023608208,
+      "goals": 0.8515625,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-focused/model_0000300.pt",
+      "validation": "runs/focused-300-midfield/midfield/focus300/summary.json",
+      "mean_return": 7.921379406005144,
+      "goals": 0.8203125,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-regularized/model_0000300.pt",
+      "validation": "runs/regularval-midfield/midfield/regular300/summary.json",
+      "mean_return": 7.855106505565345,
+      "goals": 0.828125,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-regularized/model_0001200.pt",
+      "validation": "runs/reg1200-midfield/midfield/mid12/summary.json",
+      "mean_return": 7.825606090947986,
+      "goals": 0.8203125,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-guided/model_0001500.pt",
+      "validation": "runs/regularval-midfield/midfield/guided_last/summary.json",
+      "mean_return": 7.595832625404,
+      "goals": 0.8359375,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-focused/model_0000900.pt",
+      "validation": "runs/focused-900-midfield/midfield/focus900/summary.json",
+      "mean_return": 7.121834417339414,
+      "goals": 0.765625,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-guided/model_0000600.pt",
+      "validation": "runs/third-midfield/midfield/guided600/summary.json",
+      "mean_return": 4.940752106966102,
+      "goals": 0.5,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-guided/model_0000300.pt",
+      "validation": "runs/guided300-midfield/midfield/mid/summary.json",
+      "mean_return": 2.916694748448208,
+      "goals": 0.0546875,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-v1/model_0001200.pt",
+      "validation": "runs/second-midfield/midfield/step1200/summary.json",
+      "mean_return": 2.5789680617308477,
+      "goals": 0.109375,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-v1/model_0002400.pt",
+      "validation": "runs/third-midfield/midfield/pure2400/summary.json",
+      "mean_return": 1.7227835795492865,
+      "goals": 0.03125,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/midfield-v1/model_0000600.pt",
+      "validation": "runs/first-midfield/midfield/mid/summary.json",
+      "mean_return": 1.3352231118187774,
+      "goals": 0.0078125,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    }
+  ],
+  "duel": [
+    {
+      "checkpoint": "runs/duel-recovery/model_0000900.pt",
+      "validation": "runs/recover900-duel/duel/r900/summary.json",
+      "mean_return": 4.215618510803324,
+      "goals": 0.59375,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-recovery/model_0000300.pt",
+      "validation": "runs/recovery300-duel/duel/recovery300/summary.json",
+      "mean_return": 3.855553023691755,
+      "goals": 0.4921875,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-focused/model_0000900.pt",
+      "validation": "runs/focused-900-duel/duel/focus900/summary.json",
+      "mean_return": 3.7477530533797108,
+      "goals": 0.4921875,
+      "concessions": 0.0078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-regularized/model_0000600.pt",
+      "validation": "runs/reg600-duel/duel/duel/summary.json",
+      "mean_return": 3.4223182869609445,
+      "goals": 0.4609375,
+      "concessions": 0.0078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-regularized/model_0000300.pt",
+      "validation": "runs/regularval-duel/duel/regular300/summary.json",
+      "mean_return": 3.4175895841181045,
+      "goals": 0.4453125,
+      "concessions": 0.0078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-regularized/model_0001200.pt",
+      "validation": "runs/reg1200-duel/duel/duel12/summary.json",
+      "mean_return": 3.406409889634233,
+      "goals": 0.453125,
+      "concessions": 0.0078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-focused/model_0000300.pt",
+      "validation": "runs/focused-300-duel/duel/focus300/summary.json",
+      "mean_return": 3.3596463572757784,
+      "goals": 0.4609375,
+      "concessions": 0.015625,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-recovery/model_0001200.pt",
+      "validation": "runs/recover1200-duel/duel/recovery1200/summary.json",
+      "mean_return": 3.1790786677156575,
+      "goals": 0.46875,
+      "concessions": 0.0078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-regularized/model_0000900.pt",
+      "validation": "runs/late-duel/duel/r900/summary.json",
+      "mean_return": 3.085364048689371,
+      "goals": 0.4296875,
+      "concessions": 0.015625,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-guided/model_0000300.pt",
+      "validation": "runs/guided300-duel/duel/duel/summary.json",
+      "mean_return": 2.3964798645320116,
+      "goals": 0.3046875,
+      "concessions": 0.0078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-v1/model_0002400.pt",
+      "validation": "runs/third-duel/duel/pure2400/summary.json",
+      "mean_return": 1.9317854817854823,
+      "goals": 0.0,
+      "concessions": 0.0,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-guided/model_0001500.pt",
+      "validation": "runs/regularval-duel/duel/guided_last/summary.json",
+      "mean_return": 0.8857698535284726,
+      "goals": 0.1796875,
+      "concessions": 0.0078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-guided/model_0000600.pt",
+      "validation": "runs/third-duel/duel/guided600/summary.json",
+      "mean_return": 0.3858945322863292,
+      "goals": 0.0625,
+      "concessions": 0.0078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-v1/model_0001200.pt",
+      "validation": "runs/second-duel/duel/step1200/summary.json",
+      "mean_return": -2.268209509202279,
+      "goals": 0.0,
+      "concessions": 0.078125,
+      "receptions": null,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/duel-v1/model_0000600.pt",
+      "validation": "runs/first-duel/duel/duel/summary.json",
+      "mean_return": -4.861974568964797,
+      "goals": 0.0,
+      "concessions": 0.125,
+      "receptions": null,
+      "clearances": null
+    }
+  ],
+  "positioning": [
+    {
+      "checkpoint": "runs/positioning-recovery/model_0000300.pt",
+      "validation": "runs/recnew-positioning/positioning/rec300/summary.json",
+      "mean_return": 5.224142402992584,
+      "goals": 0.0078125,
+      "concessions": null,
+      "receptions": 0.8515625,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/positioning-recovery/model_0000900.pt",
+      "validation": "runs/recnew-positioning/positioning/rec900/summary.json",
+      "mean_return": 5.1186959790065885,
+      "goals": 0.0390625,
+      "concessions": null,
+      "receptions": 0.8125,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/positioning-regularized/model_0000900.pt",
+      "validation": "runs/later-positioning/positioning/reg900/summary.json",
+      "mean_return": 5.008820675793686,
+      "goals": 0.0,
+      "concessions": null,
+      "receptions": 0.8125,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/positioning-regularized/model_0000300.pt",
+      "validation": "runs/regnew-positioning/positioning/home300/summary.json",
+      "mean_return": 4.453106618357197,
+      "goals": 0.0234375,
+      "concessions": null,
+      "receptions": 0.6953125,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/positioning-regularized/model_0001500.pt",
+      "validation": "runs/later-positioning/positioning/reg1500/summary.json",
+      "mean_return": 4.277630907468847,
+      "goals": 0.0,
+      "concessions": null,
+      "receptions": 0.671875,
+      "clearances": null
+    },
+    {
+      "checkpoint": "runs/positioning-v1/model_0001200.pt",
+      "validation": "runs/cal2-positioning/positioning/prev/summary.json",
+      "mean_return": 3.9219928678066935,
+      "goals": 0.0,
+      "concessions": null,
+      "receptions": 0.640625,
+      "clearances": null
+    }
+  ],
+  "defense": [
+    {
+      "checkpoint": "runs/defense-recovery/model_0000900.pt",
+      "validation": "runs/recnew-defense/defense/rec900/summary.json",
+      "mean_return": 3.3549900493526366,
+      "goals": 0.0,
+      "concessions": 0.0234375,
+      "receptions": null,
+      "clearances": 0.7734375
+    },
+    {
+      "checkpoint": "runs/defense-regularized/model_0001500.pt",
+      "validation": "runs/later-defense/defense/reg1500/summary.json",
+      "mean_return": 3.269012751909031,
+      "goals": 0.0078125,
+      "concessions": 0.03125,
+      "receptions": null,
+      "clearances": 0.765625
+    },
+    {
+      "checkpoint": "runs/defense-recovery/model_0000300.pt",
+      "validation": "runs/recnew-defense/defense/rec300/summary.json",
+      "mean_return": 3.2347159536147956,
+      "goals": 0.0078125,
+      "concessions": 0.046875,
+      "receptions": null,
+      "clearances": 0.78125
+    },
+    {
+      "checkpoint": "runs/defense-regularized/model_0000900.pt",
+      "validation": "runs/later-defense/defense/reg900/summary.json",
+      "mean_return": 3.1588015402667224,
+      "goals": 0.0,
+      "concessions": 0.0390625,
+      "receptions": null,
+      "clearances": 0.7421875
+    },
+    {
+      "checkpoint": "runs/defense-regularized/model_0000300.pt",
+      "validation": "runs/regnew-defense/defense/home300/summary.json",
+      "mean_return": 3.120767602173146,
+      "goals": 0.0,
+      "concessions": 0.0546875,
+      "receptions": null,
+      "clearances": 0.78125
+    },
+    {
+      "checkpoint": "runs/defense-v1/model_0001200.pt",
+      "validation": "runs/cal2-defense/defense/prev/summary.json",
+      "mean_return": -4.347282957052812,
+      "goals": 0.0,
+      "concessions": 0.6640625,
+      "receptions": null,
+      "clearances": 0.0234375
+    }
+  ]
+}
