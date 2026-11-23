@@ -17,6 +17,9 @@ def main():
     parser.add_argument("--drill", required=True)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--device", default="cuda:0")
+    parser.add_argument(
+        "--headless", action=argparse.BooleanOptionalAction, default=True
+    )
     parser.add_argument("--baseline", choices=["bot", "teacher", "idle"])
     parser.add_argument("--checkpoint", "--resume", type=Path)
     parser.add_argument(
@@ -81,7 +84,6 @@ def main():
         < 1
     ):
         parser.error("counts must be positive")
-    args.headless = True
     suite = SimpleNamespace(
         scenario="diagnostic",
         num_envs=args.num_envs,
